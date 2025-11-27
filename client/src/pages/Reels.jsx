@@ -36,10 +36,11 @@ export default function Reels() {
       const newIndex = Math.round(scrollTop / itemHeight);
       
       if (newIndex !== currentIndex) {
-        // Pause previous video
+        // Pause and reset previous video to beginning
         const prevVideo = videoRefs.current[reels[currentIndex]?._id];
         if (prevVideo) {
           prevVideo.pause();
+          prevVideo.currentTime = 0; // Reset to beginning
         }
         
         setCurrentIndex(newIndex);
@@ -47,9 +48,10 @@ export default function Reels() {
         
         if (reels[newIndex]) {
           incrementView(reels[newIndex]._id);
-          // Play new video
+          // Reset and play new video from beginning
           const newVideo = videoRefs.current[reels[newIndex]._id];
           if (newVideo) {
+            newVideo.currentTime = 0; // Start from beginning
             newVideo.play();
           }
         }
