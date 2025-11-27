@@ -90,8 +90,15 @@ export default function RestaurantDashboard() {
   const updateOrderStatus = async (orderId, status) => {
     try {
       await axios.patch(`/api/orders/${orderId}/status`, { status });
+      // Update local state immediately without refresh
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === orderId ? { ...order, status } : order
+        )
+      );
     } catch (error) {
       console.error('Error updating order:', error);
+      alert('Failed to update order status');
     }
   };
 
