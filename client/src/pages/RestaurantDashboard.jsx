@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, QrCode, LogOut, Film, Eye, Heart, X } from 'lucide-react';
+import { Plus, Edit, Trash2, QrCode, LogOut, Film, Eye, Heart, X, CreditCard } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
 
@@ -544,10 +544,19 @@ export default function RestaurantDashboard() {
       <nav className="bg-white shadow-md p-3 sm:p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-primary truncate">{restaurant.name}</h1>
-          <button onClick={logout} className="flex items-center gap-1 sm:gap-2 text-gray-700 hover:text-primary text-sm sm:text-base">
-            <LogOut size={18} className="sm:w-5 sm:h-5" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button 
+              onClick={() => navigate('/payment-settings')} 
+              className="flex items-center gap-1 sm:gap-2 text-gray-700 hover:text-primary text-sm sm:text-base"
+            >
+              <CreditCard size={18} className="sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Payment</span>
+            </button>
+            <button onClick={logout} className="flex items-center gap-1 sm:gap-2 text-gray-700 hover:text-primary text-sm sm:text-base">
+              <LogOut size={18} className="sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </div>
       </nav>
 

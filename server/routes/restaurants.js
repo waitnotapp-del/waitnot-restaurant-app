@@ -114,4 +114,26 @@ router.delete('/:id/menu/:menuId', async (req, res) => {
   }
 });
 
+// Update payment settings
+router.patch('/:id/payment-settings', async (req, res) => {
+  try {
+    const { upiId, upiName, acceptCash, acceptUPI } = req.body;
+    
+    const paymentSettings = {
+      upiId: upiId || '',
+      upiName: upiName || '',
+      acceptCash: acceptCash !== undefined ? acceptCash : true,
+      acceptUPI: acceptUPI !== undefined ? acceptUPI : false
+    };
+    
+    const restaurant = await restaurantDB.update(req.params.id, { paymentSettings });
+    if (!restaurant) return res.status(404).json({ error: 'Restaurant not found' });
+    
+    const { password, ...rest } = restaurant;
+    res.json(rest);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

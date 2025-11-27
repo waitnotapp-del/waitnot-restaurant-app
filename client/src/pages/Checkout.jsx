@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, CreditCard, Smartphone } from 'lucide-react';
+import { Trash2, Wallet, Smartphone } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import axios from 'axios';
 
@@ -223,13 +223,13 @@ export default function Checkout() {
                 <input
                   type="radio"
                   name="payment"
-                  value="card"
-                  checked={formData.paymentMethod === 'card'}
+                  value="cash"
+                  checked={formData.paymentMethod === 'cash'}
                   onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
                   className="accent-primary"
                 />
-                <CreditCard size={24} className="text-primary" />
-                <span className="font-semibold text-gray-800 dark:text-white transition-colors">Card Payment</span>
+                <Wallet size={24} className="text-primary" />
+                <span className="font-semibold text-gray-800 dark:text-white transition-colors">Cash on Delivery</span>
               </label>
             </div>
 

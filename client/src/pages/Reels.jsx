@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, ShoppingBag, X, Plus, Minus, CreditCard, Smartphone, MapPin, Volume2, VolumeX } from 'lucide-react';
+import { Heart, ShoppingBag, X, Plus, Minus, Wallet, Smartphone, MapPin, Volume2, VolumeX } from 'lucide-react';
 import axios from 'axios';
 
 export default function Reels() {
@@ -439,13 +439,13 @@ export default function Reels() {
                     <input
                       type="radio"
                       name="payment"
-                      value="card"
-                      checked={orderForm.paymentMethod === 'card'}
+                      value="cash"
+                      checked={orderForm.paymentMethod === 'cash'}
                       onChange={(e) => setOrderForm({...orderForm, paymentMethod: e.target.value})}
                       className="accent-primary"
                     />
-                    <CreditCard size={24} className="text-primary" />
-                    <span className="font-semibold text-gray-800 dark:text-white transition-colors">Card Payment</span>
+                    <Wallet size={24} className="text-primary" />
+                    <span className="font-semibold text-gray-800 dark:text-white transition-colors">Cash on Delivery</span>
                   </label>
                 </div>
 

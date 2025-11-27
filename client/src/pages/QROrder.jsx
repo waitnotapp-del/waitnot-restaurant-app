@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Minus, CreditCard, Smartphone, CheckCircle } from 'lucide-react';
+import { Plus, Minus, Wallet, Smartphone, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 
 export default function QROrder() {
@@ -287,12 +287,12 @@ export default function QROrder() {
                 <label className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer hover:border-primary">
                   <input
                     type="radio"
-                    value="card"
-                    checked={paymentMethod === 'card'}
+                    value="cash"
+                    checked={paymentMethod === 'cash'}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                   />
-                  <CreditCard size={24} className="text-primary" />
-                  <span>Card Payment</span>
+                  <Wallet size={24} className="text-primary" />
+                  <span>Cash Payment</span>
                 </label>
               </div>
             </div>
