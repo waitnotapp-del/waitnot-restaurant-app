@@ -154,19 +154,25 @@ export default function Reels() {
   };
 
   return (
-    <div className="relative h-screen bg-black overflow-hidden">
+    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden">
       {/* Top Controls */}
-      <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between">
+      <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none">
         <button
-          onClick={() => setIsMuted(!isMuted)}
-          className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsMuted(!isMuted);
+          }}
+          className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 pointer-events-auto"
         >
           {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
         </button>
         
         <button
-          onClick={() => navigate('/')}
-          className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate('/');
+          }}
+          className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 pointer-events-auto"
         >
           <X size={24} />
         </button>
@@ -175,17 +181,22 @@ export default function Reels() {
       {/* Reels Container */}
       <div
         ref={containerRef}
-        className="h-screen overflow-y-scroll snap-y snap-mandatory hide-scrollbar"
+        className="w-full h-full overflow-y-scroll overflow-x-hidden snap-y snap-mandatory hide-scrollbar"
+        style={{ scrollSnapType: 'y mandatory' }}
       >
         {reels.map((reel, index) => (
           <div
             key={reel._id}
-            className="h-screen w-screen snap-start relative flex items-center justify-center"
+            className="w-full h-full flex-shrink-0 snap-start snap-always relative"
+            style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
           >
             {/* Video Background */}
             <div 
-              className="absolute inset-0 bg-gradient-to-b from-gray-900 to-black cursor-pointer"
-              onClick={togglePlayPause}
+              className="absolute inset-0 w-full h-full bg-gradient-to-b from-gray-900 to-black"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlayPause();
+              }}
             >
               {reel.videoUrl ? (
                 <video
@@ -217,10 +228,10 @@ export default function Reels() {
             </div>
 
             {/* Overlay Content */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent pointer-events-none" />
 
             {/* Bottom Info */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+            <div className="absolute bottom-0 left-0 right-0 p-6 text-white pointer-events-none">
               <h2 className="text-2xl font-bold mb-2">{reel.dishName}</h2>
               <p className="text-3xl font-bold text-accent mb-2">₹{reel.price}</p>
               
@@ -231,8 +242,11 @@ export default function Reels() {
               )}
 
               <button
-                onClick={() => openOrderModal(reel)}
-                className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:bg-red-600 transition-colors flex items-center gap-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openOrderModal(reel);
+                }}
+                className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:bg-red-600 transition-colors flex items-center gap-2 pointer-events-auto"
               >
                 <ShoppingBag size={20} />
                 Order Now
@@ -240,10 +254,13 @@ export default function Reels() {
             </div>
 
             {/* Right Side Actions */}
-            <div className="absolute right-4 bottom-32 flex flex-col gap-6">
+            <div className="absolute right-4 bottom-32 flex flex-col gap-6 pointer-events-none">
               <button
-                onClick={() => handleLike(reel._id)}
-                className="flex flex-col items-center text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLike(reel._id);
+                }}
+                className="flex flex-col items-center text-white pointer-events-auto"
               >
                 <div className="bg-black bg-opacity-50 p-3 rounded-full hover:bg-opacity-70">
                   <Heart size={28} fill="white" />
