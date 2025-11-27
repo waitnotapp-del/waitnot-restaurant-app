@@ -91,31 +91,79 @@ export default function QROrder() {
       // Save customer info for future orders
       saveCustomerInfo(customerInfo.name, customerInfo.phone);
       
-      const orderData = {
-        restaurantId,
-        tableNumber: parseInt(tableNumber),
-        items: cart.map(item => ({
-          menuItemId: item._id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        })),
-        totalAmount: total,
-        orderType: 'dine-in',
-        customerName: customerInfo.name,
-        customerPhone: customerInfo.phone,
-        paymentStatus: 'paid',
-        paymentMethod
-      };
+      // If UPI payment, redirect to UPI app
+      if (paymentMethod === 'upi') {
+        if (!restaurant.paymentSettings?.upiId) {
+          alert('Restaurant UPI not configured. Please contact restaurant or choose Cash Payment.');
+          return;
+        }
+        
+        // Create UPI payment link
+        const upiId = restaurant.paymentSettings.upiId;
+        const upiName = restaurant.paymentSettings.upiName || restaurant.name;
+        const amount = total;
+        const note = `Table ${tableNumber} - ${restaurant.name}`;
+        
+        // UPI deep link format
+        const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+        
+        // Try to open UPI app
+        window.location.href = upiUrl;
+        
+        // Wait a bit then create order with pending payment
+        setTimeout(async () => {
+          const orderData = {
+            restaurantId,
+            tableNumber: parseInt(tableNumber),
+            items: cart.map(item => ({
+              menuItemId: item._id,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity
+            })),
+            totalAmount: total,
+            orderType: 'dine-in',
+            customerName: customerInfo.name,
+            customerPhone: customerInfo.phone,
+            paymentStatus: 'pending',
+            paymentMethod
+          };
 
-      await axios.post('/api/orders', orderData);
-      setOrderPlaced(true);
-      setTimeout(() => {
-        // Don't navigate away, allow ordering again
-        setOrderPlaced(false);
-        setCart([]);
-        setShowCheckout(false);
-      }, 2000);
+          await axios.post('/api/orders', orderData);
+          setOrderPlaced(true);
+          setTimeout(() => {
+            setOrderPlaced(false);
+            setCart([]);
+            setShowCheckout(false);
+          }, 2000);
+        }, 2000);
+      } else {
+        // Cash Payment
+        const orderData = {
+          restaurantId,
+          tableNumber: parseInt(tableNumber),
+          items: cart.map(item => ({
+            menuItemId: item._id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity
+          })),
+          totalAmount: total,
+          orderType: 'dine-in',
+          customerName: customerInfo.name,
+          customerPhone: customerInfo.phone,
+          paymentStatus: 'pending',
+          paymentMethod
+        };
+
+        await axios.post('/api/orders', orderData);
+        setOrderPlaced(true);
+        setTimeout(() => {
+          setOrderPlaced(false);
+          setCart([]);
+          setShowCheckout(false);
+        }, 2000);
+      }
     } catch (error) {
       console.error('Error placing order:', error);
       alert('Failed to place order');

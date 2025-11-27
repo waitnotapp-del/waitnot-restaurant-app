@@ -130,23 +130,67 @@ export default function Reels() {
 
   const confirmPayment = async () => {
     try {
-      const orderData = {
-        restaurantId: selectedReel.restaurantId._id,
-        items: [{
-          menuItemId: selectedReel._id,
-          name: selectedReel.dishName,
-          price: selectedReel.price,
-          quantity: quantity
-        }],
-        totalAmount: selectedReel.price * quantity,
-        orderType: 'delivery',
-        ...orderForm,
-        paymentStatus: 'paid'
-      };
+      const finalTotal = selectedReel.price * quantity + 40 + Math.round((selectedReel.price * quantity) * 0.05);
+      
+      // If UPI payment, redirect to UPI app
+      if (orderForm.paymentMethod === 'upi') {
+        if (!selectedReel.restaurantId.paymentSettings?.upiId) {
+          alert('Restaurant UPI not configured. Please contact restaurant or choose Cash on Delivery.');
+          return;
+        }
+        
+        // Create UPI payment link
+        const upiId = selectedReel.restaurantId.paymentSettings.upiId;
+        const upiName = selectedReel.restaurantId.paymentSettings.upiName || selectedReel.restaurantId.name;
+        const amount = finalTotal;
+        const note = `Order: ${selectedReel.dishName} from ${selectedReel.restaurantId.name}`;
+        
+        // UPI deep link format
+        const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+        
+        // Try to open UPI app
+        window.location.href = upiUrl;
+        
+        // Wait a bit then create order with pending payment
+        setTimeout(async () => {
+          const orderData = {
+            restaurantId: selectedReel.restaurantId._id,
+            items: [{
+              menuItemId: selectedReel._id,
+              name: selectedReel.dishName,
+              price: selectedReel.price,
+              quantity: quantity
+            }],
+            totalAmount: finalTotal,
+            orderType: 'delivery',
+            ...orderForm,
+            paymentStatus: 'pending'
+          };
 
-      await axios.post('/api/orders', orderData);
-      alert('Order placed successfully! 🎉');
-      closeOrderModal();
+          await axios.post('/api/orders', orderData);
+          alert('Order placed! Please complete UPI payment. 🎉');
+          closeOrderModal();
+        }, 2000);
+      } else {
+        // Cash on Delivery
+        const orderData = {
+          restaurantId: selectedReel.restaurantId._id,
+          items: [{
+            menuItemId: selectedReel._id,
+            name: selectedReel.dishName,
+            price: selectedReel.price,
+            quantity: quantity
+          }],
+          totalAmount: finalTotal,
+          orderType: 'delivery',
+          ...orderForm,
+          paymentStatus: 'pending'
+        };
+
+        await axios.post('/api/orders', orderData);
+        alert('Order placed successfully! Pay cash on delivery. 🎉');
+        closeOrderModal();
+      }
     } catch (error) {
       console.error('Error placing order:', error);
       alert('Failed to place order. Please try again.');
