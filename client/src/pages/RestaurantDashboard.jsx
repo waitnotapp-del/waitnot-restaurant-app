@@ -482,6 +482,32 @@ export default function RestaurantDashboard() {
     const subtotal = totalAmount;
     const tax = 0; // Can add tax calculation if needed
     
+    // Calculate payment breakdown
+    const paidOnline = tableOrders
+      .filter(o => o.paymentStatus === 'paid')
+      .reduce((sum, o) => sum + o.totalAmount, 0);
+    
+    const pendingCash = tableOrders
+      .filter(o => o.paymentStatus === 'pending')
+      .reduce((sum, o) => sum + o.totalAmount, 0);
+    
+    // Create payment details array
+    const paymentDetails = [];
+    if (paidOnline > 0) {
+      paymentDetails.push({
+        method: 'Online Payment (Razorpay)',
+        amount: paidOnline,
+        status: 'paid'
+      });
+    }
+    if (pendingCash > 0) {
+      paymentDetails.push({
+        method: 'Cash Payment',
+        amount: pendingCash,
+        status: 'pending'
+      });
+    }
+    
     // Create bill data
     const billData = {
       restaurant: {
@@ -500,8 +526,9 @@ export default function RestaurantDashboard() {
       total: totalAmount,
       date: new Date().toLocaleString(),
       billNumber: `BILL-${Date.now()}`,
-      paymentStatus: tableOrders.some(o => o.paymentStatus === 'paid') ? 'paid' : 'pending',
-      paymentMethod: firstOrder.paymentMethod || 'cash'
+      paymentDetails, // Array of payment methods used
+      paidOnline,
+      pendingCash
     };
 
     // Show bill modal
@@ -518,12 +545,7 @@ export default function RestaurantDashboard() {
 
       // Clear the customer session for this table
       const sessionKey = `table_session_${restaurant._id}_${tableNumber}`;
-      console.log('Clearing session:', sessionKey);
-      console.log('Session before clear:', localStorage.getItem(sessionKey));
       localStorage.removeItem(sessionKey);
-      console.log('Session after clear:', localStorage.getItem(sessionKey));
-      
-      alert(`✅ Bill Generated!\n\nTable ${tableNumber}\nTotal: ₹${totalAmount}\n\nTable is now ready for next customer.\n\nCustomer session cleared - next customer will need to enter their details.`);
       
       // Refresh orders
       const restaurantId = localStorage.getItem('restaurantId');

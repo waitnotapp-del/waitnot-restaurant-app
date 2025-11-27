@@ -117,7 +117,7 @@ export default function BillModal({ isOpen, onClose, billData }) {
     }, 250);
   };
 
-  const { restaurant, tableNumber, customer, items, subtotal, tax, total, date, billNumber, paymentStatus, paymentMethod } = billData;
+  const { restaurant, tableNumber, customer, items, subtotal, tax, total, date, billNumber, paymentDetails, paidOnline, pendingCash } = billData;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -212,19 +212,43 @@ export default function BillModal({ isOpen, onClose, billData }) {
               </div>
             </div>
 
-            {/* Payment Status */}
-            <div className="mt-6 text-center">
-              <span className={`inline-block px-6 py-2 rounded-lg font-bold ${
-                paymentStatus === 'paid' 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {paymentStatus === 'paid' ? '✓ PAID' : '⏳ PENDING PAYMENT'}
-              </span>
-              {paymentMethod && (
-                <p className="text-sm text-gray-600 mt-2">
-                  Payment Method: {paymentMethod === 'razorpay' ? 'Online Payment' : paymentMethod.toUpperCase()}
-                </p>
+            {/* Payment Breakdown */}
+            <div className="mt-6 border-t-2 border-gray-300 pt-4">
+              <h3 className="text-lg font-bold text-gray-800 mb-3">Payment Details:</h3>
+              {paymentDetails && paymentDetails.length > 0 ? (
+                <div className="space-y-2">
+                  {paymentDetails.map((payment, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-gray-800">{payment.method}</p>
+                        <span className={`inline-block px-3 py-1 rounded text-xs font-semibold mt-1 ${
+                          payment.status === 'paid' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {payment.status === 'paid' ? '✓ PAID' : '⏳ PENDING'}
+                        </span>
+                      </div>
+                      <p className="text-xl font-bold text-primary">₹{payment.amount}</p>
+                    </div>
+                  ))}
+                  
+                  {/* Summary */}
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-green-700 font-semibold">✓ Paid Online:</span>
+                      <span className="text-green-700 font-bold">₹{paidOnline || 0}</span>
+                    </div>
+                    {pendingCash > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-yellow-700 font-semibold">⏳ Pending (Cash):</span>
+                        <span className="text-yellow-700 font-bold">₹{pendingCash}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-600">No payment information available</p>
               )}
             </div>
 
