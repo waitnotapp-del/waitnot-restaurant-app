@@ -145,10 +145,10 @@ export default function LanguageSelector() {
       {/* Language Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         title="Change Language"
       >
-        <Globe size={20} className="text-gray-700" />
+        <Globe size={20} className="text-gray-700 dark:text-gray-300" />
         <span className="text-xl">{currentLanguage.flag}</span>
       </button>
 
@@ -157,15 +157,15 @@ export default function LanguageSelector() {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40"
             onClick={() => setIsOpen(false)}
           />
 
           {/* Dropdown Menu */}
-          <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
+          <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="p-3 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-800 dark:text-white mb-2 flex items-center gap-2">
                 <Globe size={18} />
                 Select Language
               </h3>
@@ -174,7 +174,7 @@ export default function LanguageSelector() {
                 placeholder="Search languages..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
             </div>
 
@@ -184,14 +184,14 @@ export default function LanguageSelector() {
                 <button
                   key={lang.code}
                   onClick={() => changeLanguage(lang.code)}
-                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left ${
-                    i18n.language === lang.code ? 'bg-blue-50 border-l-4 border-primary' : ''
+                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left ${
+                    i18n.language === lang.code ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-primary' : ''
                   }`}
                 >
                   <span className="text-2xl">{lang.flag}</span>
                   <div className="flex-1">
-                    <p className="font-medium text-gray-800">{lang.name}</p>
-                    <p className="text-xs text-gray-500">{lang.code.toUpperCase()}</p>
+                    <p className="font-medium text-gray-800 dark:text-white">{lang.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{lang.code.toUpperCase()}</p>
                   </div>
                   {i18n.language === lang.code && (
                     <span className="text-primary">✓</span>
@@ -199,14 +199,14 @@ export default function LanguageSelector() {
                 </button>
               ))}
               {filteredLanguages.length === 0 && (
-                <div className="p-4 text-center text-gray-500 text-sm">
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
                   No languages found
                 </div>
               )}
             </div>
 
             {/* Footer */}
-            <div className="p-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 text-center">
+            <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs text-gray-600 dark:text-gray-400 text-center">
               <strong>{languages.length}+ languages</strong> supported worldwide 🌍
             </div>
           </div>

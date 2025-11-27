@@ -16,9 +16,9 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center flex-shrink-0 hover:opacity-80 transition-opacity">
             <img 
-              src="/waitnotflogo.png" 
+              src={theme === 'dark' ? '/waitnotlogo-dark.png' : '/waitnotflogo.png'}
               alt="WaitNot Logo" 
-              className="h-16 sm:h-20 md:h-24 w-auto object-contain"
+              className="h-16 sm:h-20 md:h-24 w-auto object-contain transition-opacity"
             />
           </Link>
           

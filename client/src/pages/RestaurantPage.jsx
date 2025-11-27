@@ -35,8 +35,8 @@ export default function RestaurantPage() {
     }
   }, [translatedRestaurant, t, selectedCategory]);
 
-  if (!restaurant) return <div className="text-center py-12">{t('loading')}</div>;
-  if (!translatedRestaurant) return <div className="text-center py-12">{t('loading')}</div>;
+  if (!restaurant) return <div className="text-center py-12 text-gray-800 dark:text-white">{t('loading')}</div>;
+  if (!translatedRestaurant) return <div className="text-center py-12 text-gray-800 dark:text-white">{t('loading')}</div>;
 
   const displayRestaurant = translatedRestaurant || restaurant;
   const uniqueCategories = [...new Set(displayRestaurant.menu.map(item => item.category))];
@@ -54,7 +54,7 @@ export default function RestaurantPage() {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       {/* Restaurant Header */}
-      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-4 sm:p-6 mb-6 sm:mb-8 border border-transparent dark:border-gray-700 transition-colors">
         <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
           <div className="w-full md:w-48 h-40 sm:h-48 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center flex-shrink-0">
             {displayRestaurant.image ? (
@@ -65,16 +65,16 @@ export default function RestaurantPage() {
           </div>
           
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">{displayRestaurant.name}</h1>
-            <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">{displayRestaurant.description}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-2 transition-colors">{displayRestaurant.name}</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 text-sm sm:text-base transition-colors">{displayRestaurant.description}</p>
             
             <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm">
-              <div className="flex items-center gap-1 text-yellow-500">
+              <div className="flex items-center gap-1 text-yellow-500 dark:text-yellow-400">
                 <Star size={16} className="sm:w-[18px] sm:h-[18px]" fill="currentColor" />
                 <span className="font-semibold">{convertNumerals(displayRestaurant.rating, i18n.language)}</span>
               </div>
               
-              <div className="flex items-center gap-1 text-gray-600">
+              <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400 transition-colors">
                 <Clock size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span>
                   {(() => {
@@ -86,7 +86,7 @@ export default function RestaurantPage() {
               </div>
               
               {displayRestaurant.isDeliveryAvailable && (
-                <div className="flex items-center gap-1 text-green-600">
+                <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
                   <MapPin size={16} className="sm:w-[18px] sm:h-[18px]" />
                   <span>{t('deliveryAvailable')}</span>
                 </div>
@@ -94,8 +94,8 @@ export default function RestaurantPage() {
             </div>
             
             <div className="mt-3 sm:mt-4 text-sm sm:text-base">
-              <span className="text-gray-700 font-semibold">{t('Cuisines')}: </span>
-              <span className="text-gray-600">{displayRestaurant.cuisine?.join(', ')}</span>
+              <span className="text-gray-700 dark:text-gray-300 font-semibold transition-colors">{t('Cuisines')}: </span>
+              <span className="text-gray-600 dark:text-gray-400 transition-colors">{displayRestaurant.cuisine?.join(', ')}</span>
             </div>
           </div>
         </div>
@@ -112,10 +112,10 @@ export default function RestaurantPage() {
             <button
               key={category}
               onClick={() => setSelectedCategory(categoryValue)}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full whitespace-nowrap text-sm sm:text-base ${
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full whitespace-nowrap text-sm sm:text-base transition-colors ${
                 selectedCategory === categoryValue
                   ? 'bg-primary text-white'
-                  : 'bg-white text-gray-700 border border-gray-300'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
               }`}
             >
               {displayName}
@@ -130,7 +130,7 @@ export default function RestaurantPage() {
           const quantity = getItemQuantity(item._id);
           
           return (
-            <div key={item._id} className="bg-white rounded-lg shadow-md overflow-hidden flex">
+            <div key={item._id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 overflow-hidden flex border border-transparent dark:border-gray-700 transition-colors">
               {/* Item Image */}
               <div className="w-28 sm:w-32 h-28 sm:h-32 bg-gradient-to-r from-accent to-secondary flex items-center justify-center flex-shrink-0 relative">
                 {item.image ? (
@@ -148,8 +148,8 @@ export default function RestaurantPage() {
               {/* Item Details */}
               <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-1">{item.name}</h3>
-                  <p className="text-gray-600 text-xs sm:text-sm mb-2 line-clamp-2">{item.description}</p>
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white mb-1 transition-colors">{item.name}</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-2 line-clamp-2 transition-colors">{item.description}</p>
                   <p className="text-lg sm:text-xl font-bold text-primary">{formatCurrency(item.price, i18n.language)}</p>
                 </div>
               </div>
@@ -159,12 +159,12 @@ export default function RestaurantPage() {
                 {quantity === 0 ? (
                   <button
                     onClick={() => addToCart(item, restaurant)}
-                    className="bg-primary text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-red-600 transition-colors font-semibold text-sm sm:text-base whitespace-nowrap"
+                    className="bg-primary text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-red-600 transition-colors font-semibold text-sm sm:text-base whitespace-nowrap shadow-md"
                   >
                     {t('add')}
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2 sm:gap-3 bg-primary text-white rounded-lg px-2 sm:px-3 py-2">
+                  <div className="flex items-center gap-2 sm:gap-3 bg-primary text-white rounded-lg px-2 sm:px-3 py-2 shadow-md">
                     <button
                       onClick={() => {
                         const cartItem = cart.find(i => i._id === item._id);
@@ -173,14 +173,14 @@ export default function RestaurantPage() {
                           updateQuantity(item._id, quantity - 1);
                         }
                       }}
-                      className="p-1 hover:bg-red-600 rounded"
+                      className="p-1 hover:bg-red-600 rounded transition-colors"
                     >
                       <Minus size={18} />
                     </button>
                     <span className="font-bold min-w-[20px] text-center">{quantity}</span>
                     <button
                       onClick={() => addToCart(item, restaurant)}
-                      className="p-1 hover:bg-red-600 rounded"
+                      className="p-1 hover:bg-red-600 rounded transition-colors"
                     >
                       <Plus size={18} />
                     </button>

@@ -50,10 +50,10 @@ export default function Checkout() {
   if (cart.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-8 sm:py-12 text-center">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Your cart is empty</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-4">Your cart is empty</h2>
         <button
           onClick={() => navigate('/')}
-          className="bg-primary text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-red-600 text-sm sm:text-base"
+          className="bg-primary text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-red-600 text-sm sm:text-base transition-colors"
         >
           Browse Restaurants
         </button>
@@ -63,34 +63,34 @@ export default function Checkout() {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 sm:mb-8">Checkout</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-6 sm:mb-8">Checkout</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         {/* Cart Items */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-4 sm:p-6 mb-4 sm:mb-6 border border-transparent dark:border-gray-700">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-3 sm:mb-4">
               Order from {restaurant?.name}
             </h2>
             
             {cart.map((item) => (
-              <div key={item._id} className="flex items-center gap-4 py-4 border-b">
+              <div key={item._id} className="flex items-center gap-4 py-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                  <h3 className="font-semibold text-gray-800 dark:text-white">{item.name}</h3>
                   <p className="text-primary font-bold">₹{item.price}</p>
                 </div>
                 
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                    className="w-8 h-8 bg-gray-200 rounded hover:bg-gray-300"
+                    className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white transition-colors"
                   >
                     -
                   </button>
-                  <span className="font-semibold">{item.quantity}</span>
+                  <span className="font-semibold text-gray-800 dark:text-white">{item.quantity}</span>
                   <button
                     onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                    className="w-8 h-8 bg-gray-200 rounded hover:bg-gray-300"
+                    className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white transition-colors"
                   >
                     +
                   </button>
