@@ -369,7 +369,7 @@ export default function QROrder() {
       </div>
 
       {/* UPI QR Code Payment Modal */}
-      {showUPIQR && (
+      {showUPIQR && restaurant && restaurant.paymentSettings && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
@@ -388,7 +388,7 @@ export default function QROrder() {
             <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
               <div className="flex items-center justify-center">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(restaurant.paymentSettings.upiId)}&pn=${encodeURIComponent(restaurant.paymentSettings.upiName || restaurant.name)}&am=${total}&cu=INR&tn=${encodeURIComponent(`Table ${tableNumber} - ${restaurant.name}`)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(restaurant.paymentSettings?.upiId || '')}&pn=${encodeURIComponent(restaurant.paymentSettings?.upiName || restaurant.name)}&am=${total}&cu=INR&tn=${encodeURIComponent(`Table ${tableNumber} - ${restaurant.name}`)}`}
                   alt="UPI QR Code"
                   className="w-64 h-64"
                 />
@@ -397,7 +397,7 @@ export default function QROrder() {
 
             <div className="bg-blue-50 p-3 rounded-lg mb-4">
               <p className="text-sm text-gray-700 mb-2">
-                <strong>UPI ID:</strong> {restaurant.paymentSettings.upiId}
+                <strong>UPI ID:</strong> {restaurant.paymentSettings?.upiId || 'Not configured'}
               </p>
               <p className="text-sm text-gray-700">
                 <strong>Amount:</strong> ₹{total}
