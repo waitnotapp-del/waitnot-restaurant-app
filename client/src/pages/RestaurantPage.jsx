@@ -209,27 +209,33 @@ export default function RestaurantPage() {
                     <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white mb-1 transition-colors">{item.name}</h3>
                     <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-2 line-clamp-2 transition-colors">{item.description}</p>
                     
-                    {/* Rating Display */}
-                    {itemRatings[item._id] && (
-                      <div className="flex items-center gap-1 mb-2">
-                        <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                        <span className="text-sm font-semibold text-gray-800 dark:text-white">
-                          {itemRatings[item._id].average}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          ({itemRatings[item._id].count} {itemRatings[item._id].count === 1 ? 'review' : 'reviews'})
-                        </span>
-                      </div>
-                    )}
+                    {/* Rating and View Reviews - Same Line */}
+                    <div className="flex items-center justify-between mb-2">
+                      {itemRatings[item._id] ? (
+                        <div className="flex items-center gap-1">
+                          <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                          <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                            {itemRatings[item._id].average}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            ({itemRatings[item._id].count})
+                          </span>
+                        </div>
+                      ) : (
+                        <div></div>
+                      )}
+                      
+                      <button
+                        onClick={() => setShowReviewsFor(showReviewsFor === item._id ? null : item._id)}
+                        className="flex items-center gap-1 text-primary hover:text-red-600 text-xs sm:text-sm font-semibold"
+                      >
+                        <MessageSquare size={14} />
+                        <span className="hidden sm:inline">{showReviewsFor === item._id ? 'Hide' : 'View'}</span>
+                      </button>
+                    </div>
+                    
                     <p className="text-lg sm:text-xl font-bold text-primary">{formatCurrency(item.price, i18n.language)}</p>
                   </div>
-                  <button
-                    onClick={() => setShowReviewsFor(showReviewsFor === item._id ? null : item._id)}
-                    className="flex items-center gap-1 text-primary hover:text-red-600 text-sm font-semibold mt-2"
-                  >
-                    <MessageSquare size={16} />
-                    {showReviewsFor === item._id ? 'Hide Reviews' : 'View Reviews'}
-                  </button>
                 </div>
                 
                 {/* Add to Cart Button */}
