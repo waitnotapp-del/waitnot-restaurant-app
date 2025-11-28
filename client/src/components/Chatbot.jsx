@@ -25,6 +25,7 @@ export default function Chatbot() {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderQuantity, setOrderQuantity] = useState(1);
   const [orderPreference, setOrderPreference] = useState('veg');
+  const [awaitingPreference, setAwaitingPreference] = useState(null); // Store search query waiting for veg/non-veg preference
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -138,6 +139,66 @@ export default function Chatbot() {
   };
 
   const processMessage = async (lowerMessage, restaurants, reviews) => {
+    // Check if user is responding to veg/non-veg preference question
+    if (awaitingPreference) {
+      let userPreference = null;
+      
+      if (lowerMessage.includes('veg') && !lowerMessage.includes('non')) {
+        userPreference = 'veg';
+      } else if (lowerMessage.includes('non-veg') || lowerMessage.includes('non veg') || lowerMessage.includes('nonveg')) {
+        userPreference = 'non-veg';
+      }
+
+      if (!userPreference) {
+        return "Please specify either 'veg' or 'non-veg' to continue.";
+      }
+
+      // Now search for items with the specified preference
+      const searchQuery = awaitingPreference;
+      setAwaitingPreference(null);
+
+      const allMenuItems = [];
+      restaurants.forEach(restaurant => {
+        restaurant.menu?.forEach(item => {
+          allMenuItems.push({
+            ...item,
+            restaurantName: restaurant.name,
+            restaurantRating: restaurant.rating,
+            restaurantId: restaurant._id
+          });
+        });
+      });
+
+      // Find items that match the search query and preference
+      const matchingItems = allMenuItems.filter(item => {
+        const itemName = item.name.toLowerCase();
+        const matchesSearch = searchQuery.split(' ').some(word => 
+          itemName.includes(word) || word.includes(itemName.split(' ')[0])
+        );
+        
+        // Filter by veg/non-veg preference
+        const matchesPreference = userPreference === 'veg' 
+          ? (item.isVeg === true || item.isVeg === undefined)
+          : (item.isVeg === false || item.isVeg === undefined);
+        
+        return matchesSearch && matchesPreference;
+      });
+
+      if (matchingItems.length === 0) {
+        return `Sorry, I couldn't find any ${userPreference} ${searchQuery}. Would you like to try something else?`;
+      }
+
+      // Sort by rating
+      const sortedItems = matchingItems.sort((a, b) => {
+        const ratingDiff = (b.rating || 0) - (a.rating || 0);
+        if (ratingDiff !== 0) return ratingDiff;
+        return (b.restaurantRating || 0) - (a.restaurantRating || 0);
+      });
+
+      // Show the best match in modal
+      return askForConfirmation(sortedItems[0]);
+    }
+
     // Check if user wants to order something
     const orderKeywords = ['order', 'buy', 'get me', 'i want', 'place order', 'order for me'];
     const wantsToOrder = orderKeywords.some(keyword => lowerMessage.includes(keyword));
@@ -147,6 +208,14 @@ export default function Chatbot() {
     const hasSpecificFood = foodKeywords.some(keyword => lowerMessage.includes(keyword));
     
     if (hasSpecificFood || (lowerMessage.includes('best') && !lowerMessage.includes('restaurant'))) {
+      // Check if user already specified veg/non-veg in the message
+      let userPreference = null;
+      if (lowerMessage.includes('veg') && !lowerMessage.includes('non')) {
+        userPreference = 'veg';
+      } else if (lowerMessage.includes('non-veg') || lowerMessage.includes('non veg') || lowerMessage.includes('nonveg')) {
+        userPreference = 'non-veg';
+      }
+
       // Extract the food item name from the message
       const allMenuItems = [];
       restaurants.forEach(restaurant => {
@@ -170,8 +239,32 @@ export default function Chatbot() {
       });
 
       if (matchingItems.length > 0) {
+        // If user wants to order but hasn't specified veg/non-veg, ask first
+        if (wantsToOrder && !userPreference) {
+          // Extract the food name for the question
+          const foodName = foodKeywords.find(keyword => lowerMessage.includes(keyword));
+          setAwaitingPreference(lowerMessage);
+          return `Would you like veg or non-veg ${foodName}? Please reply with 'veg' or 'non-veg'.`;
+        }
+
+        // Filter by preference if specified
+        let filteredItems = matchingItems;
+        if (userPreference) {
+          filteredItems = matchingItems.filter(item => {
+            if (userPreference === 'veg') {
+              return item.isVeg === true || item.isVeg === undefined;
+            } else {
+              return item.isVeg === false || item.isVeg === undefined;
+            }
+          });
+        }
+
+        if (filteredItems.length === 0) {
+          return `Sorry, I couldn't find any ${userPreference} items matching your search. Would you like to try something else?`;
+        }
+
         // Sort by rating (highest first), then by restaurant rating
-        const sortedItems = matchingItems.sort((a, b) => {
+        const sortedItems = filteredItems.sort((a, b) => {
           const ratingDiff = (b.rating || 0) - (a.rating || 0);
           if (ratingDiff !== 0) return ratingDiff;
           return (b.restaurantRating || 0) - (a.restaurantRating || 0);
@@ -180,7 +273,7 @@ export default function Chatbot() {
         // Get top 3 best-rated items
         const topMatches = sortedItems.slice(0, 3);
 
-        // If user wants to order, ask for confirmation first
+        // If user wants to order, show modal
         if (wantsToOrder && topMatches.length > 0) {
           return askForConfirmation(topMatches[0]);
         }
