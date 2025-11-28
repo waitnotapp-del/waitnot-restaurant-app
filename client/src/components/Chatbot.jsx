@@ -76,14 +76,30 @@ export default function Chatbot() {
   const getBotResponse = async (message) => {
     const lowerMessage = message.toLowerCase();
 
+    // Ensure data is loaded
+    if (restaurantsData.length === 0) {
+      try {
+        const { data } = await axios.get('/api/restaurants/search');
+        setRestaurantsData(data);
+        // Re-process the message with loaded data
+        return await processMessage(lowerMessage, data, reviewsData);
+      } catch (error) {
+        return "Sorry, I'm having trouble connecting to the server. Please try again!";
+      }
+    }
+
+    return await processMessage(lowerMessage, restaurantsData, reviewsData);
+  };
+
+  const processMessage = async (lowerMessage, restaurants, reviews) => {
     // Top rated restaurants
     if (lowerMessage.includes('top') && (lowerMessage.includes('restaurant') || lowerMessage.includes('rated'))) {
-      const topRestaurants = [...restaurantsData]
+      const topRestaurants = [...restaurants]
         .sort((a, b) => b.rating - a.rating)
         .slice(0, 5);
       
       if (topRestaurants.length === 0) {
-        return "I'm analyzing our restaurants. Please try again in a moment!";
+        return "No restaurants found at the moment. Please check back later!";
       }
 
       let response = "🌟 Here are our top-rated restaurants:\n\n";
@@ -96,7 +112,7 @@ export default function Chatbot() {
     // Best food recommendations
     if (lowerMessage.includes('best') && (lowerMessage.includes('food') || lowerMessage.includes('dish') || lowerMessage.includes('item'))) {
       const allMenuItems = [];
-      restaurantsData.forEach(restaurant => {
+      restaurants.forEach(restaurant => {
         restaurant.menu?.forEach(item => {
           allMenuItems.push({
             ...item,
@@ -112,7 +128,7 @@ export default function Chatbot() {
         .slice(0, 5);
 
       if (topItems.length === 0) {
-        return "I'm analyzing our menu items. All our restaurants serve delicious food! Browse the menu to find your favorites.";
+        return "All our restaurants serve delicious food! Browse the menu to find your favorites.";
       }
 
       let response = "🍽️ Top-rated food items:\n\n";
@@ -123,14 +139,27 @@ export default function Chatbot() {
     }
 
     // Restaurant recommendations
-    if (lowerMessage.includes('recommend') || lowerMessage.includes('suggest')) {
-      const highRatedRestaurants = restaurantsData
+    if (lowerMessage.includes('recommend') || lowerMessage.includes('suggest') || lowerMessage.includes('best restaurant')) {
+      const highRatedRestaurants = restaurants
         .filter(r => r.rating >= 4)
         .sort((a, b) => b.rating - a.rating)
         .slice(0, 3);
 
       if (highRatedRestaurants.length === 0) {
-        return "All our restaurants are great! Check out the home page to explore options.";
+        // If no 4+ rated, show top 3 anyway
+        const topRestaurants = [...restaurants]
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, 3);
+        
+        if (topRestaurants.length === 0) {
+          return "Check out the home page to explore our restaurants!";
+        }
+
+        let response = "Here are our top restaurants:\n\n";
+        topRestaurants.forEach((r, i) => {
+          response += `${i + 1}. ${r.name}\n   ⭐ ${r.rating}/5\n   🍴 ${r.cuisine?.join(', ')}\n   ${r.isDeliveryAvailable ? '🚚 Delivery available' : '🏪 Dine-in only'}\n\n`;
+        });
+        return response;
       }
 
       let response = "Based on ratings and popularity, I recommend:\n\n";
@@ -149,7 +178,7 @@ export default function Chatbot() {
       const foundCuisine = cuisineKeywords.find(c => lowerMessage.includes(c));
 
       if (foundCuisine) {
-        const matchingRestaurants = restaurantsData.filter(r => 
+        const matchingRestaurants = restaurants.filter(r => 
           r.cuisine?.some(c => c.toLowerCase().includes(foundCuisine)) ||
           r.name.toLowerCase().includes(foundCuisine)
         );
@@ -166,7 +195,7 @@ export default function Chatbot() {
 
     // Reviews and ratings
     if (lowerMessage.includes('review') || lowerMessage.includes('feedback')) {
-      const recentReviews = reviewsData.slice(0, 3);
+      const recentReviews = reviews.slice(0, 3);
       
       if (recentReviews.length === 0) {
         return "No reviews yet! Be the first to share your experience.";
@@ -182,7 +211,7 @@ export default function Chatbot() {
 
     // Fast delivery
     if (lowerMessage.includes('fast') || lowerMessage.includes('quick') || lowerMessage.includes('delivery time')) {
-      const fastRestaurants = restaurantsData
+      const fastRestaurants = restaurants
         .filter(r => r.deliveryTime && parseInt(r.deliveryTime) <= 30)
         .sort((a, b) => parseInt(a.deliveryTime) - parseInt(b.deliveryTime))
         .slice(0, 5);
@@ -198,9 +227,9 @@ export default function Chatbot() {
 
     // Statistics
     if (lowerMessage.includes('how many') || lowerMessage.includes('total') || lowerMessage.includes('statistics')) {
-      const totalRestaurants = restaurantsData.length;
-      const avgRating = (restaurantsData.reduce((sum, r) => sum + r.rating, 0) / totalRestaurants).toFixed(1);
-      const totalReviews = reviewsData.length;
+      const totalRestaurants = restaurants.length;
+      const avgRating = totalRestaurants > 0 ? (restaurants.reduce((sum, r) => sum + r.rating, 0) / totalRestaurants).toFixed(1) : 0;
+      const totalReviews = reviews.length;
 
       return `📊 App Statistics:\n\n🏪 Total Restaurants: ${totalRestaurants}\n⭐ Average Rating: ${avgRating}/5\n📝 Total Reviews: ${totalReviews}\n\nWe're constantly growing to serve you better!`;
     }
