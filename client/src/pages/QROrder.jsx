@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Minus, Wallet, Smartphone, CheckCircle } from 'lucide-react';
+import { Plus, Minus, Wallet, Smartphone, CheckCircle, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { initiateRazorpayPayment } from '../components/RazorpayPayment';
 
@@ -209,6 +209,13 @@ export default function QROrder() {
       {/* Header */}
       <div className="bg-primary text-white p-4 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-white hover:text-gray-200 mb-2 transition-colors"
+          >
+            <ArrowLeft size={20} />
+            <span className="font-medium">Back to Home</span>
+          </button>
           <h1 className="text-2xl font-bold">{restaurant.name}</h1>
           <p className="text-sm">Table {tableNumber}</p>
         </div>

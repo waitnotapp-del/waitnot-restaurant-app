@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Star, Clock, MapPin, Plus, Minus, Leaf } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Star, Clock, MapPin, Plus, Minus, Leaf, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { useCart } from '../context/CartContext';
@@ -11,6 +11,7 @@ import { formatCurrency, convertNumerals } from '../utils/numberFormatter';
 export default function RestaurantPage() {
   const { t, i18n } = useTranslation();
   const { id } = useParams();
+  const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const { addToCart, cart } = useCart();
@@ -54,6 +55,15 @@ export default function RestaurantPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary mb-4 transition-colors"
+      >
+        <ArrowLeft size={20} />
+        <span className="font-medium">{t('back')}</span>
+      </button>
+
       {/* Restaurant Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-4 sm:p-6 mb-6 sm:mb-8 border border-transparent dark:border-gray-700 transition-colors">
         <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
