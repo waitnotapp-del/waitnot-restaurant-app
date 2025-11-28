@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { convertNumerals } from '../utils/numberFormatter';
 import QRScanner from '../components/QRScanner';
+import Chatbot from '../components/Chatbot';
 
 export default function Home() {
   const { t, i18n } = useTranslation();
@@ -130,6 +131,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16">
+      {/* Chatbot */}
+      <Chatbot />
+      
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       {/* Search Section */}
       <div className="mb-6 sm:mb-8">

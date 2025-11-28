@@ -1,18 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
+import axios from 'axios';
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Hi! I'm your food ordering assistant. How can I help you today?",
+      text: "Hi! I'm your intelligent food assistant. I can analyze our restaurants and recommend the best options for you. Ask me about:\n• Top rated restaurants\n• Best food items\n• Popular cuisines\n• Restaurant recommendations\n• Menu item ratings",
       sender: 'bot',
       timestamp: new Date()
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+  const [restaurantsData, setRestaurantsData] = useState([]);
+  const [reviewsData, setReviewsData] = useState([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,7 +26,27 @@ export default function Chatbot() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = () => {
+  // Fetch restaurants and reviews data when chatbot opens
+  useEffect(() => {
+    if (isOpen && restaurantsData.length === 0) {
+      fetchAppData();
+    }
+  }, [isOpen]);
+
+  const fetchAppData = async () => {
+    try {
+      const [restaurantsRes, reviewsRes] = await Promise.all([
+        axios.get('/api/restaurants/search'),
+        axios.get('/api/reviews')
+      ]);
+      setRestaurantsData(restaurantsRes.data);
+      setReviewsData(reviewsRes.data);
+    } catch (error) {
+      console.error('Error fetching app data:', error);
+    }
+  };
+
+  const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
     const userMessage = {
@@ -34,37 +58,155 @@ export default function Chatbot() {
 
     setMessages([...messages, userMessage]);
     setInputMessage('');
+    setIsTyping(true);
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponse = getBotResponse(inputMessage);
+    // Get intelligent bot response
+    setTimeout(async () => {
+      const botResponse = await getBotResponse(inputMessage);
+      setIsTyping(false);
       setMessages(prev => [...prev, {
         id: prev.length + 1,
         text: botResponse,
         sender: 'bot',
         timestamp: new Date()
       }]);
-    }, 1000);
+    }, 800);
   };
 
-  const getBotResponse = (message) => {
+  const getBotResponse = async (message) => {
     const lowerMessage = message.toLowerCase();
 
-    if (lowerMessage.includes('order') || lowerMessage.includes('track')) {
-      return "You can track your orders in the Order History section. All your past and current orders are displayed there with their status.";
-    } else if (lowerMessage.includes('payment') || lowerMessage.includes('pay')) {
-      return "We accept multiple payment methods including UPI, cards, and cash on delivery. You can choose your preferred method at checkout.";
-    } else if (lowerMessage.includes('delivery') || lowerMessage.includes('time')) {
-      return "Delivery typically takes 30-45 minutes depending on your location and restaurant preparation time. You'll receive real-time updates on your order status.";
-    } else if (lowerMessage.includes('cancel')) {
-      return "To cancel an order, please contact the restaurant directly through the app or call our support team. Orders can only be cancelled before preparation begins.";
-    } else if (lowerMessage.includes('help') || lowerMessage.includes('support')) {
-      return "I can help you with:\n• Tracking orders\n• Payment information\n• Delivery details\n• Restaurant recommendations\n• Account settings\n\nWhat would you like to know?";
-    } else if (lowerMessage.includes('restaurant') || lowerMessage.includes('food')) {
-      return "Browse our wide selection of restaurants on the home page! You can filter by cuisine, ratings, and delivery time.";
-    } else {
-      return "I'm here to help! You can ask me about orders, payments, delivery, or any other questions about using our app.";
+    // Top rated restaurants
+    if (lowerMessage.includes('top') && (lowerMessage.includes('restaurant') || lowerMessage.includes('rated'))) {
+      const topRestaurants = [...restaurantsData]
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 5);
+      
+      if (topRestaurants.length === 0) {
+        return "I'm analyzing our restaurants. Please try again in a moment!";
+      }
+
+      let response = "🌟 Here are our top-rated restaurants:\n\n";
+      topRestaurants.forEach((r, i) => {
+        response += `${i + 1}. ${r.name}\n   ⭐ ${r.rating}/5 | ${r.cuisine?.join(', ')}\n   🕐 ${r.deliveryTime}\n\n`;
+      });
+      return response;
     }
+
+    // Best food recommendations
+    if (lowerMessage.includes('best') && (lowerMessage.includes('food') || lowerMessage.includes('dish') || lowerMessage.includes('item'))) {
+      const allMenuItems = [];
+      restaurantsData.forEach(restaurant => {
+        restaurant.menu?.forEach(item => {
+          allMenuItems.push({
+            ...item,
+            restaurantName: restaurant.name,
+            restaurantRating: restaurant.rating
+          });
+        });
+      });
+
+      const topItems = allMenuItems
+        .filter(item => item.rating && item.rating > 4)
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 5);
+
+      if (topItems.length === 0) {
+        return "I'm analyzing our menu items. All our restaurants serve delicious food! Browse the menu to find your favorites.";
+      }
+
+      let response = "🍽️ Top-rated food items:\n\n";
+      topItems.forEach((item, i) => {
+        response += `${i + 1}. ${item.name}\n   ⭐ ${item.rating}/5 | ₹${item.price}\n   📍 ${item.restaurantName}\n\n`;
+      });
+      return response;
+    }
+
+    // Restaurant recommendations
+    if (lowerMessage.includes('recommend') || lowerMessage.includes('suggest')) {
+      const highRatedRestaurants = restaurantsData
+        .filter(r => r.rating >= 4)
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 3);
+
+      if (highRatedRestaurants.length === 0) {
+        return "All our restaurants are great! Check out the home page to explore options.";
+      }
+
+      let response = "Based on ratings and popularity, I recommend:\n\n";
+      highRatedRestaurants.forEach((r, i) => {
+        response += `${i + 1}. ${r.name}\n   ⭐ ${r.rating}/5\n   🍴 ${r.cuisine?.join(', ')}\n   ${r.isDeliveryAvailable ? '🚚 Delivery available' : '🏪 Dine-in only'}\n\n`;
+      });
+      return response;
+    }
+
+    // Cuisine-based search
+    if (lowerMessage.includes('cuisine') || lowerMessage.includes('chinese') || lowerMessage.includes('indian') || 
+        lowerMessage.includes('italian') || lowerMessage.includes('mexican') || lowerMessage.includes('pizza') ||
+        lowerMessage.includes('burger') || lowerMessage.includes('biryani')) {
+      
+      const cuisineKeywords = ['chinese', 'indian', 'italian', 'mexican', 'pizza', 'burger', 'biryani', 'fast food'];
+      const foundCuisine = cuisineKeywords.find(c => lowerMessage.includes(c));
+
+      if (foundCuisine) {
+        const matchingRestaurants = restaurantsData.filter(r => 
+          r.cuisine?.some(c => c.toLowerCase().includes(foundCuisine)) ||
+          r.name.toLowerCase().includes(foundCuisine)
+        );
+
+        if (matchingRestaurants.length > 0) {
+          let response = `🍴 Restaurants serving ${foundCuisine}:\n\n`;
+          matchingRestaurants.slice(0, 5).forEach((r, i) => {
+            response += `${i + 1}. ${r.name}\n   ⭐ ${r.rating}/5 | 🕐 ${r.deliveryTime}\n\n`;
+          });
+          return response;
+        }
+      }
+    }
+
+    // Reviews and ratings
+    if (lowerMessage.includes('review') || lowerMessage.includes('feedback')) {
+      const recentReviews = reviewsData.slice(0, 3);
+      
+      if (recentReviews.length === 0) {
+        return "No reviews yet! Be the first to share your experience.";
+      }
+
+      let response = "📝 Recent customer reviews:\n\n";
+      recentReviews.forEach((review, i) => {
+        response += `⭐ ${review.rating}/5 - "${review.comment}"\n`;
+        if (i < recentReviews.length - 1) response += "\n";
+      });
+      return response;
+    }
+
+    // Fast delivery
+    if (lowerMessage.includes('fast') || lowerMessage.includes('quick') || lowerMessage.includes('delivery time')) {
+      const fastRestaurants = restaurantsData
+        .filter(r => r.deliveryTime && parseInt(r.deliveryTime) <= 30)
+        .sort((a, b) => parseInt(a.deliveryTime) - parseInt(b.deliveryTime))
+        .slice(0, 5);
+
+      if (fastRestaurants.length > 0) {
+        let response = "⚡ Fastest delivery restaurants:\n\n";
+        fastRestaurants.forEach((r, i) => {
+          response += `${i + 1}. ${r.name}\n   🕐 ${r.deliveryTime} | ⭐ ${r.rating}/5\n\n`;
+        });
+        return response;
+      }
+    }
+
+    // Statistics
+    if (lowerMessage.includes('how many') || lowerMessage.includes('total') || lowerMessage.includes('statistics')) {
+      const totalRestaurants = restaurantsData.length;
+      const avgRating = (restaurantsData.reduce((sum, r) => sum + r.rating, 0) / totalRestaurants).toFixed(1);
+      const totalReviews = reviewsData.length;
+
+      return `📊 App Statistics:\n\n🏪 Total Restaurants: ${totalRestaurants}\n⭐ Average Rating: ${avgRating}/5\n📝 Total Reviews: ${totalReviews}\n\nWe're constantly growing to serve you better!`;
+    }
+
+    // Default intelligent response
+    return "I can help you discover:\n\n🌟 Top-rated restaurants\n🍽️ Best food items\n🍴 Cuisine recommendations\n⚡ Fast delivery options\n📊 App statistics\n\nJust ask me anything about our restaurants and food!";
   };
 
   const handleKeyPress = (e) => {
@@ -131,6 +273,20 @@ export default function Chatbot() {
                 </div>
               </div>
             ))}
+            
+            {/* Typing Indicator */}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </div>
 
