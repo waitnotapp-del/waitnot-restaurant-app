@@ -10,6 +10,13 @@ const api = axios.create({
   },
 });
 
+// Store network error handler
+let networkErrorHandler = null;
+
+export const setNetworkErrorHandler = (handler) => {
+  networkErrorHandler = handler;
+};
+
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
@@ -29,6 +36,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Check for network errors
+    if (!error.response && (error.code === 'ERR_NETWORK' || error.message === 'Network Error')) {
+      if (networkErrorHandler) {
+        networkErrorHandler();
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401) {
       // Handle unauthorized
       localStorage.removeItem('restaurantToken');
