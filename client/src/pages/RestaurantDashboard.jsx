@@ -577,7 +577,7 @@ export default function RestaurantDashboard() {
   const dineInOrders = orders.filter(order => order.orderType === 'dine-in');
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
+    <div className="min-h-screen bg-white pb-8">
       <nav className="bg-white shadow-md p-3 sm:p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-primary truncate">{restaurant.name}</h1>
