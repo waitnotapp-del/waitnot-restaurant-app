@@ -52,7 +52,8 @@ export default function RestaurantPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       {/* Restaurant Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-4 sm:p-6 mb-6 sm:mb-8 border border-transparent dark:border-gray-700 transition-colors">
         <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
@@ -190,6 +191,7 @@ export default function RestaurantPage() {
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

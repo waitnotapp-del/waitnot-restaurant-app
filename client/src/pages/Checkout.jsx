@@ -112,8 +112,9 @@ export default function Checkout() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-6 sm:mb-8">Checkout</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-6 sm:mb-8">Checkout</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         {/* Cart Items */}
@@ -300,6 +301,7 @@ export default function Checkout() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
