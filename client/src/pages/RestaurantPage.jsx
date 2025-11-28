@@ -24,14 +24,15 @@ export default function RestaurantPage() {
 
   // Handle Android back button
   useEffect(() => {
-    const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-      navigate('/');
+    const backButtonListener = CapacitorApp.addListener('backButton', (data) => {
+      // Always navigate to home, don't use default back behavior
+      window.location.href = '/';
     });
 
     return () => {
       backButtonListener.remove();
     };
-  }, [navigate]);
+  }, []);
 
   const fetchRestaurant = async () => {
     try {
