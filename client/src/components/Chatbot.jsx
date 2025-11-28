@@ -119,21 +119,21 @@ export default function Chatbot() {
       // Add item to cart first time
       addToCart(cartItem, restaurantInfo);
       
-      // If quantity > 1, wait and then update the quantity
-      if (quantity > 1) {
-        setTimeout(() => {
-          updateQuantity(cartItem._id, quantity);
-        }, 200);
-      }
-
       // Clear pending order
       setPendingOrder(null);
 
-      // Close chatbot and navigate to checkout after a short delay
+      // Wait for cart to update, then update quantity if needed, then navigate
       setTimeout(() => {
-        setIsOpen(false);
-        navigate('/checkout');
-      }, 1500);
+        if (quantity > 1) {
+          updateQuantity(cartItem._id, quantity);
+        }
+        
+        // Navigate to checkout after quantity is updated
+        setTimeout(() => {
+          setIsOpen(false);
+          navigate('/checkout');
+        }, 300);
+      }, 300);
 
       return `✅ Added to Cart!\n\n📦 Order Confirmed:\n• ${item.name} ${preference ? `(${preference})` : ''}\n• Quantity: ${quantity}\n• ⭐ ${item.rating || 'N/A'}/5\n• 💰 ₹${item.price} × ${quantity} = ₹${item.price * quantity}\n• 📍 ${item.restaurantName}\n\n🛒 Taking you to checkout...\n\nYou can review your order and complete the purchase there!`;
     } catch (error) {
