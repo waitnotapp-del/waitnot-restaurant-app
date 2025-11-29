@@ -98,14 +98,22 @@ router.post('/process', async (req, res) => {
   try {
     const { command, restaurantId, tableNumber } = req.body;
     
+    console.log('Voice command received:', { command, restaurantId, tableNumber });
+    
     if (!command) {
       return res.status(400).json({ error: 'Command is required' });
     }
 
     const lowerCommand = command.toLowerCase();
     
-    // Remove wake word
-    const cleanCommand = lowerCommand.replace(/hey waitnot,?/gi, '').trim();
+    // Remove wake words (support both old and new)
+    const cleanCommand = lowerCommand
+      .replace(/hey aman,?/gi, '')
+      .replace(/hey amaan,?/gi, '')
+      .replace(/hey waitnot,?/gi, '')
+      .trim();
+    
+    console.log('Clean command:', cleanCommand);
     
     // Determine action
     let action = 'order';
@@ -143,33 +151,35 @@ router.post('/process', async (req, res) => {
     // Process order - get restaurant menu
     if (restaurantId) {
       const restaurant = await db.getRestaurantById(restaurantId);
+      console.log('Restaurant found:', restaurant ? restaurant.name : 'Not found');
       
       if (restaurant && restaurant.menu) {
+        console.log('Menu items count:', restaurant.menu.length);
         const matches = matchMenuItem(cleanCommand, restaurant.menu);
+        console.log('Matches found:', matches.length, matches.map(m => ({ name: m.item.name, confidence: m.confidence })));
         
         if (matches.length > 0) {
           // Extract quantities for each matched item
-          matches.forEach(match => {
-            const quantity = extractQuantity(cleanCommand);
-            items.push({
-              name: match.item.name,
-              quantity: quantity,
-              price: match.item.price,
-              confidence: match.confidence
-            });
+          const quantity = extractQuantity(cleanCommand);
+          console.log('Extracted quantity:', quantity);
+          
+          // Take only the best match
+          const bestMatch = matches[0];
+          items.push({
+            name: bestMatch.item.name,
+            quantity: quantity,
+            price: bestMatch.item.price,
+            _id: bestMatch.item._id,
+            confidence: bestMatch.confidence
           });
           
           // Generate reply
-          if (items.length === 1) {
-            const item = items[0];
-            reply = `Sure! I've added ${item.quantity} ${item.name}${item.quantity > 1 ? 's' : ''} to your order.`;
-          } else {
-            const itemList = items.map(i => `${i.quantity} ${i.name}`).join(', ');
-            reply = `Great! I've added ${itemList} to your order.`;
-          }
+          reply = `Sure! I've added ${quantity} ${bestMatch.item.name}${quantity > 1 ? 's' : ''} to your order.`;
         } else {
           reply = "Sorry, I couldn't find that item on the menu. Could you please repeat?";
         }
+      } else {
+        reply = "Sorry, I couldn't load the menu. Please try again.";
       }
     } else {
       reply = "Please scan the QR code at your table first to start ordering.";

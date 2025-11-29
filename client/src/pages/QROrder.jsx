@@ -219,13 +219,23 @@ export default function QROrder() {
   }
 
   const handleVoiceOrder = (voiceData) => {
+    console.log('Voice order received:', voiceData);
     if (voiceData.action === 'order' && voiceData.items.length > 0) {
       voiceData.items.forEach(voiceItem => {
+        // Find menu item by name or _id
         const menuItem = restaurant.menu.find(
-          item => item.name.toLowerCase() === voiceItem.name.toLowerCase()
+          item => item.name.toLowerCase() === voiceItem.name.toLowerCase() ||
+                  item._id === voiceItem._id
         );
+        
         if (menuItem) {
-          addToCart(menuItem, voiceItem.quantity);
+          console.log('Adding to cart:', menuItem.name, 'quantity:', voiceItem.quantity);
+          // Add item multiple times based on quantity
+          for (let i = 0; i < voiceItem.quantity; i++) {
+            addToCart(menuItem);
+          }
+        } else {
+          console.error('Menu item not found:', voiceItem.name);
         }
       });
     }
