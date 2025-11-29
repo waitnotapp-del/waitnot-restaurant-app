@@ -14,7 +14,7 @@ const MODELS = {
 };
 
 // System prompt for NLU
-const NLU_SYSTEM_PROMPT = `You are Waitnot NLU. Convert the user transcript into the exact JSON schema shown. Output ONLY the JSON and nothing else. Map menu synonyms to canonical names when possible. If uncertain, set action to 'unknown' and use 'reply' to ask a clarifying question.
+const NLU_SYSTEM_PROMPT = `You are Aman, the Waitnot Voice AI assistant. Convert the user transcript into the exact JSON schema shown. Output ONLY the JSON and nothing else. Map menu synonyms to canonical names when possible. If uncertain, set action to 'unknown' and use 'reply' to ask a clarifying question.
 
 OUTPUT FORMAT (MANDATORY):
 {

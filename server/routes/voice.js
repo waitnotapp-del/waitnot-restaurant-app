@@ -155,11 +155,11 @@ router.post('/process', async (req, res) => {
 
     const lowerCommand = command.toLowerCase();
     
-    // Remove wake words (support both old and new)
+    // Remove wake words (support variations)
     const cleanCommand = lowerCommand
       .replace(/hey aman,?/gi, '')
       .replace(/hey amaan,?/gi, '')
-      .replace(/hey waitnot,?/gi, '')
+      .replace(/hey aaman,?/gi, '')
       .trim();
     
     console.log('Clean command:', cleanCommand);
