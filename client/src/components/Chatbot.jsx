@@ -529,9 +529,11 @@ export default function Chatbot() {
             <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
               <h4 className="font-bold text-lg text-gray-800 dark:text-white mb-2">{pendingOrder.name}</h4>
               <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                <span className="flex items-center gap-1">
-                  ⭐ {pendingOrder.rating || 'N/A'}/5
-                </span>
+                {pendingOrder.rating && (
+                  <span className="flex items-center gap-1">
+                    ⭐ {pendingOrder.rating}/5
+                  </span>
+                )}
                 <span>💰 ₹{pendingOrder.price}</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">📍 {pendingOrder.restaurantName}</p>
@@ -599,15 +601,31 @@ export default function Chatbot() {
               </button>
               <button
                 onClick={async () => {
-                  setShowOrderModal(false);
-                  const preference = orderPreference === 'veg' ? 'Veg' : 'Non-Veg';
-                  const response = await confirmAndPlaceOrder(pendingOrder, orderQuantity, preference);
-                  setMessages(prev => [...prev, {
-                    id: prev.length + 1,
-                    text: response,
-                    sender: 'bot',
-                    timestamp: new Date()
-                  }]);
+                  try {
+                    console.log('Add to Cart clicked', pendingOrder, orderQuantity);
+                    setShowOrderModal(false);
+                    setIsTyping(true);
+                    
+                    const preference = orderPreference === 'veg' ? 'Veg' : 'Non-Veg';
+                    const response = await confirmAndPlaceOrder(pendingOrder, orderQuantity, preference);
+                    
+                    setIsTyping(false);
+                    setMessages(prev => [...prev, {
+                      id: prev.length + 1,
+                      text: response,
+                      sender: 'bot',
+                      timestamp: new Date()
+                    }]);
+                  } catch (error) {
+                    console.error('Error in Add to Cart:', error);
+                    setIsTyping(false);
+                    setMessages(prev => [...prev, {
+                      id: prev.length + 1,
+                      text: `❌ Error: ${error.message}`,
+                      sender: 'bot',
+                      timestamp: new Date()
+                    }]);
+                  }
                 }}
                 className="flex-1 px-4 py-3 bg-primary hover:bg-red-600 text-white rounded-lg font-semibold transition-colors"
               >
