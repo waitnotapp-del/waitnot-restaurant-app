@@ -1,7 +1,11 @@
 import express from 'express';
 import * as db from '../db.js';
+import { processVoiceWithAI, validateAndRepairOrder } from '../services/openrouter.js';
 
 const router = express.Router();
+
+// Feature flag for AI processing
+const USE_AI_PROCESSING = process.env.USE_AI_PROCESSING === 'true' || true;
 
 // Helper function to extract quantity from text
 function extractQuantity(text) {
@@ -114,6 +118,39 @@ router.post('/process', async (req, res) => {
       .trim();
     
     console.log('Clean command:', cleanCommand);
+
+    // Get restaurant menu for context
+    let restaurant = null;
+    let menuItems = [];
+    
+    if (restaurantId) {
+      restaurant = await db.getRestaurantById(restaurantId);
+      if (restaurant && restaurant.menu) {
+        menuItems = restaurant.menu;
+      }
+    }
+
+    // Try AI processing first if enabled
+    if (USE_AI_PROCESSING && process.env.OPENROUTER_API_KEY) {
+      try {
+        console.log('Using AI processing...');
+        const aiResult = await processVoiceWithAI(cleanCommand, menuItems);
+        const validatedResult = validateAndRepairOrder(aiResult, menuItems);
+        
+        console.log('AI Result:', validatedResult);
+        
+        return res.json({
+          action: validatedResult.action,
+          items: validatedResult.items,
+          table: tableNumber || validatedResult.table || '',
+          reply: validatedResult.reply,
+          source: 'ai'
+        });
+      } catch (aiError) {
+        console.error('AI processing failed, falling back to keyword matching:', aiError.message);
+        // Continue to fallback logic below
+      }
+    }
     
     // Determine action
     let action = 'order';
