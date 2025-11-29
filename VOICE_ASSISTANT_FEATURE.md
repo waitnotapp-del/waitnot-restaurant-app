@@ -1,12 +1,12 @@
-# 🎤 Voice Assistant Feature - "Hey Waitnot"
+# 🎤 Voice Assistant Feature - "Hey Aman"
 
 ## Overview
-Voice-activated AI assistant for hands-free ordering in restaurants using the wake word **"Hey Waitnot"**.
+Voice-activated AI assistant for hands-free ordering in restaurants using the wake word **"Hey Aman"**.
 
 ## Features
 
 ### 🔊 Wake-Word Activation
-- **Wake Phrase**: "Hey Waitnot"
+- **Wake Phrase**: "Hey Aman"
 - Activates voice recognition and processes commands
 - Works in real-time with continuous listening
 
@@ -14,13 +14,13 @@ Voice-activated AI assistant for hands-free ordering in restaurants using the wa
 
 #### 1. **Voice Ordering**
 ```
-User: "Hey Waitnot, get me two masala dosas and one lime juice."
+User: "Hey Aman, get me two masala dosas and one lime juice."
 AI: "Sure! I've added two masala dosas and one lime juice to your order."
 ```
 
 #### 2. **Bill Inquiry**
 ```
-User: "Hey Waitnot, what is my bill?"
+User: "Hey Aman, what is my bill?"
 AI: "Let me fetch your bill amount."
 ```
 
@@ -142,7 +142,7 @@ AI: "Let me show you our popular items."
 
 ### Ordering Multiple Items
 ```
-👤 "Hey Waitnot, get me one veg biryani and two lime juices."
+👤 "Hey Aman, get me one veg biryani and two lime juices."
 🤖 "Great! I've added 1 veg biryani, 2 lime juices to your order."
 ```
 
@@ -257,6 +257,6 @@ Added permissions:
 ---
 
 **Status**: ✅ Implemented and Ready to Use
-**Wake Word**: "Hey Waitnot"
+**Wake Word**: "Hey Aman"
 **Location**: QR Order Page (Bottom-left corner)
 **APK Support**: ✅ Fully Working with Native Android Speech Recognition

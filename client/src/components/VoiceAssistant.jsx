@@ -70,9 +70,9 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         if (finalTranscript) {
           setTranscript(finalTranscript);
           // Check for wake word
-          if (finalTranscript.toLowerCase().includes('hey waitnot') || 
-              finalTranscript.toLowerCase().includes('hey wait not') ||
-              finalTranscript.toLowerCase().includes('hey weight not')) {
+          if (finalTranscript.toLowerCase().includes('hey aman') || 
+              finalTranscript.toLowerCase().includes('hey amaan') ||
+              finalTranscript.toLowerCase().includes('hey aman')) {
             // Provide immediate feedback
             setWakeWordDetected(true);
             playBeep(); // Play beep sound
@@ -214,7 +214,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           {/* Header */}
           <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
             <Volume2 size={20} className="text-primary" />
-            <h3 className="font-bold text-gray-800 dark:text-white">Voice Assistant</h3>
+            <h3 className="font-bold text-gray-800 dark:text-white">Aman Assistant</h3>
             {isListening && (
               <span className="ml-auto text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -226,7 +226,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           {/* Wake Word Hint */}
           {isListening && !transcript && !wakeWordDetected && (
             <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm text-blue-700 dark:text-blue-300">
-              💡 Say: <strong>"Hey Waitnot"</strong> to activate
+              💡 Say: <strong>"Hey Aman"</strong> to activate
             </div>
           )}
           
