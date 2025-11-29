@@ -1,11 +1,24 @@
 import express from 'express';
 import * as db from '../db.js';
-import { processVoiceWithAI, validateAndRepairOrder } from '../services/openrouter.js';
 
 const router = express.Router();
 
 // Feature flag for AI processing
-const USE_AI_PROCESSING = process.env.USE_AI_PROCESSING === 'true' || true;
+const USE_AI_PROCESSING = process.env.USE_AI_PROCESSING === 'true';
+
+// Try to import OpenRouter service (optional)
+let processVoiceWithAI = null;
+let validateAndRepairOrder = null;
+
+try {
+  const openrouterModule = await import('../services/openrouter.js');
+  processVoiceWithAI = openrouterModule.processVoiceWithAI;
+  validateAndRepairOrder = openrouterModule.validateAndRepairOrder;
+  console.log('✅ OpenRouter AI service loaded successfully');
+} catch (error) {
+  console.log('⚠️ OpenRouter AI service not available (dependencies not installed)');
+  console.log('   Voice assistant will use fallback keyword matching');
+}
 
 // Helper function to extract quantity from text
 function extractQuantity(text) {
@@ -130,8 +143,8 @@ router.post('/process', async (req, res) => {
       }
     }
 
-    // Try AI processing first if enabled
-    if (USE_AI_PROCESSING && process.env.OPENROUTER_API_KEY) {
+    // Try AI processing first if enabled and available
+    if (USE_AI_PROCESSING && process.env.OPENROUTER_API_KEY && processVoiceWithAI && validateAndRepairOrder) {
       try {
         console.log('Using AI processing...');
         const aiResult = await processVoiceWithAI(cleanCommand, menuItems);
@@ -231,11 +244,13 @@ router.post('/process', async (req, res) => {
     
   } catch (error) {
     console.error('Voice processing error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       action: 'error',
       items: [],
       table: '',
-      reply: "Sorry, I encountered an error. Please try again."
+      reply: "Sorry, I encountered an error. Please try again.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
