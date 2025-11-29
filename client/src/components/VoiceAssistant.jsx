@@ -34,6 +34,9 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           setTranscript(finalTranscript);
           // Check for wake word
           if (finalTranscript.toLowerCase().includes('hey waitnot')) {
+            // Provide immediate feedback
+            speak('Yes, I am listening!');
+            setResponse('🎤 Activated! Processing your command...');
             processVoiceCommand(finalTranscript);
           }
         }
