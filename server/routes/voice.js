@@ -12,9 +12,10 @@ let validateAndRepairOrder = null;
 let openrouterLoaded = false;
 let openrouterError = null;
 
-// Load OpenRouter service asynchronously
+// Load OpenRouter service asynchronously - completely optional
 const loadOpenRouter = async () => {
   try {
+    // Only try to load if openai package is available
     const openrouterModule = await import('../services/openrouter.js');
     processVoiceWithAI = openrouterModule.processVoiceWithAI;
     validateAndRepairOrder = openrouterModule.validateAndRepairOrder;
@@ -24,13 +25,17 @@ const loadOpenRouter = async () => {
     openrouterError = error.message;
     console.log('⚠️ OpenRouter AI service not available:', error.message);
     console.log('   Voice assistant will use fallback keyword matching');
+    console.log('   This is normal if openai package is not installed');
   }
 };
 
 // Start loading (don't await - let it load in background)
-loadOpenRouter().catch(err => {
-  console.error('Failed to load OpenRouter:', err);
-});
+// Wrapped in setTimeout to ensure route is registered first
+setTimeout(() => {
+  loadOpenRouter().catch(err => {
+    console.error('Failed to load OpenRouter (using fallback):', err.message);
+  });
+}, 100);
 
 // Helper function to extract quantity from text
 function extractQuantity(text) {
@@ -121,6 +126,16 @@ function matchMenuItem(spokenText, menuItems) {
   matches.sort((a, b) => b.confidence - a.confidence);
   return matches;
 }
+
+// Health check route
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    openrouterLoaded,
+    openrouterError,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Process voice command
 router.post('/process', async (req, res) => {
