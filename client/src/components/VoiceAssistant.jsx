@@ -80,16 +80,18 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           // Process next message in queue
           processSpeechQueue();
           
-          // Restart recognition if no more messages
+          // Restart recognition if no more messages (with extra delay to avoid feedback)
           if (speechQueueRef.current.length === 0 && isListening) {
-            try {
-              recognitionRef.current?.start();
-              console.log('Recognition restarted after TTS');
-            } catch (e) {
-              console.log('Could not restart recognition:', e);
-            }
+            setTimeout(() => {
+              try {
+                recognitionRef.current?.start();
+                console.log('Recognition restarted after TTS (with safety delay)');
+              } catch (e) {
+                console.log('Could not restart recognition:', e);
+              }
+            }, 1000); // Extra 1 second safety delay
           }
-        }, 2000); // Reduced delay
+        }, 2000);
       };
       
       utterance.onerror = (error) => {
@@ -259,18 +261,24 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           // Also ignore if transcript contains common assistant phrases (feedback loop detection)
           const assistantPhrases = [
             'would you like',
+            'you like a vegetarian',
+            'you like a non',
             'how many would you like',
             'please provide',
             'order placed successfully',
             'placing your order',
             'great choice',
             'perfect',
-            'sure'
+            'sure!',
+            'i have selected',
+            'i\'ve selected',
+            'your order for',
+            'your food will arrive'
           ];
           
           const lowerTranscript = finalTranscript.toLowerCase();
           const containsAssistantPhrase = assistantPhrases.some(phrase => 
-            lowerTranscript.includes(phrase) && lowerTranscript.length > 50
+            lowerTranscript.includes(phrase)
           );
           
           if (containsAssistantPhrase) {
@@ -995,6 +1003,25 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       
       // Redirect to order confirmation after 8 seconds (give time to hear message)
       setTimeout(() => {
+        // Clean up before redirect
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.stop();
+            recognitionRef.current = null;
+          } catch (e) {
+            console.log('Recognition already stopped');
+          }
+        }
+        
+        // Cancel any ongoing speech
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+        
+        // Clear queue
+        speechQueueRef.current = [];
+        
+        // Navigate
         window.location.href = `/restaurant/${selectedItem.restaurantId}`;
       }, 8000);
       
