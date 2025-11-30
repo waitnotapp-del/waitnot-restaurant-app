@@ -269,7 +269,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       console.log('Conversation state:', latestState || conversationState);
       
       // If we're in a conversation state, handle follow-up
-      if (conversationState) {
+      if (latestState || conversationStateRef.current) {
         console.log('In conversation, handling follow-up');
         await handleFollowUp(lowerCommand);
         return;
