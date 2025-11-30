@@ -4,6 +4,17 @@ import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
 
 export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProcessed }) {
+  // Load conversation state from localStorage on mount
+  const loadConversationState = () => {
+    try {
+      const saved = localStorage.getItem('aman_conversation_state');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error('Error loading conversation state:', e);
+      return null;
+    }
+  };
+
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
@@ -11,10 +22,10 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
   const [isSupported, setIsSupported] = useState(true);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [wakeWordDetected, setWakeWordDetected] = useState(false);
-  const [conversationState, setConversationState] = useState(null); // For multi-turn conversation
+  const [conversationState, setConversationState] = useState(loadConversationState); // Load from localStorage
   const [recommendedItems, setRecommendedItems] = useState([]);
   const recognitionRef = useRef(null);
-  const conversationStateRef = useRef(null); // Ref to track conversation state in callbacks
+  const conversationStateRef = useRef(loadConversationState()); // Initialize ref with saved state
 
   // Helper function to speak text
   const speak = (text) => {
@@ -74,6 +85,24 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       oscillator.stop(audioContext.currentTime + 0.2);
     } catch (error) {
       console.error('Error playing beep:', error);
+    }
+  };
+
+  // Helper to save conversation state to both state and localStorage
+  const saveConversationState = (newState) => {
+    console.log('Saving conversation state:', newState);
+    setConversationState(newState);
+    conversationStateRef.current = newState;
+    
+    // Persist to localStorage
+    try {
+      if (newState === null) {
+        localStorage.removeItem('aman_conversation_state');
+      } else {
+        localStorage.setItem('aman_conversation_state', JSON.stringify(newState));
+      }
+    } catch (e) {
+      console.error('Error saving conversation state:', e);
     }
   };
 
@@ -329,9 +358,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         requestedQuantity: requestedQuantity || null
       };
       
-      setConversationState(newState);
-      conversationStateRef.current = newState; // Update ref immediately
-      console.log('Conversation state set:', newState);
+      saveConversationState(newState);
       
       const msg = `Sure! Would you like a vegetarian or non-vegetarian ${matchedFood}?`;
       setResponse(msg);
@@ -388,8 +415,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         step: 'awaiting_veg_preference',
         items: ratedItems
       };
-      setConversationState(newState);
-      conversationStateRef.current = newState; // Update ref immediately
+      saveConversationState(newState);
     } catch (error) {
       console.error('Error fetching recommendations:', error);
       const msg = "Sorry, I couldn't fetch recommendations. Please try again.";
@@ -431,8 +457,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           const msg = `Sorry, no ${isVeg ? 'vegetarian' : 'non-vegetarian'} ${conversationState.foodName || 'items'} found.`;
           setResponse(msg);
           speak(msg);
-          setConversationState(null);
-          conversationStateRef.current = null;
+          saveConversationState(null);
           return;
         }
         
@@ -453,8 +478,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
             window.location.href = `/restaurant/${topItem.restaurantId}`;
           }, 2000);
           
-          setConversationState(null);
-          conversationStateRef.current = null;
+          saveConversationState(null);
         } else {
           // Ask for quantity
           const ratingText = topItem.averageRating ? ` with ${topItem.averageRating} stars rating` : '';
@@ -467,8 +491,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
             selectedItem: topItem,
             preference: isVeg ? 'veg' : 'non-veg'
           };
-          setConversationState(newState);
-          conversationStateRef.current = newState; // Update ref immediately
+          saveConversationState(newState);
         }
         
       } else if (conversationState.step === 'awaiting_quantity') {
@@ -499,16 +522,14 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           window.location.href = `/restaurant/${item.restaurantId}`;
         }, 2000);
         
-        setConversationState(null);
-        conversationStateRef.current = null;
+        saveConversationState(null);
       }
     } catch (error) {
       console.error('Error handling follow-up:', error);
       const msg = "Sorry, something went wrong. Please try again.";
       setResponse(msg);
       speak(msg);
-      setConversationState(null);
-      conversationStateRef.current = null;
+      saveConversationState(null);
     } finally {
       setIsProcessing(false);
       setWakeWordDetected(false);
