@@ -528,21 +528,21 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         if (conversationState.requestedQuantity) {
           const quantity = conversationState.requestedQuantity;
           const ratingText = topItem.averageRating ? ` with ${topItem.averageRating} stars rating` : '';
-          const msg = `Great choice! I've added ${quantity} ${topItem.name} from ${topItem.restaurantName}${ratingText} to your cart. Redirecting you now...`;
+          const msg = `Great! I've selected ${quantity} ${topItem.name} from ${topItem.restaurantName}${ratingText}. Now, please provide your delivery address.`;
           setResponse(msg);
           speak(msg);
           
-          setTimeout(() => {
-            const cartItem = { ...topItem, quantity };
-            localStorage.setItem('voice_cart_item', JSON.stringify(cartItem));
-            window.location.href = `/restaurant/${topItem.restaurantId}`;
-          }, 2000);
-          
-          saveConversationState(null);
+          const newState = {
+            step: 'awaiting_address',
+            selectedItem: topItem,
+            quantity: quantity,
+            preference: isVeg ? 'veg' : 'non-veg'
+          };
+          saveConversationState(newState);
         } else {
           // Ask for quantity
           const ratingText = topItem.averageRating ? ` with ${topItem.averageRating} stars rating` : '';
-          const msg = `Great! The best rated ${isVeg ? 'vegetarian' : 'non-vegetarian'} ${conversationState.foodName || 'item'} is ${topItem.name} from ${topItem.restaurantName}${ratingText}. How many would you like to add to your cart?`;
+          const msg = `Great! The best rated ${isVeg ? 'vegetarian' : 'non-vegetarian'} ${conversationState.foodName || 'item'} is ${topItem.name} from ${topItem.restaurantName}${ratingText}. How many would you like to order?`;
           setResponse(msg);
           speak(msg);
           
@@ -566,23 +566,101 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         }
         
         const item = conversationState.selectedItem;
-        
-        // Navigate to restaurant page with item in cart
-        const msg = `Perfect! Adding ${quantity} ${item.name} to your cart. Redirecting you to ${item.restaurantName}...`;
+        const msg = `Perfect! ${quantity} ${item.name}. Now, please provide your delivery address.`;
         setResponse(msg);
         speak(msg);
         
-        // Store cart item in localStorage and redirect
-        setTimeout(() => {
-          const cartItem = {
-            ...item,
-            quantity
-          };
-          localStorage.setItem('voice_cart_item', JSON.stringify(cartItem));
-          window.location.href = `/restaurant/${item.restaurantId}`;
-        }, 2000);
+        const newState = {
+          step: 'awaiting_address',
+          selectedItem: item,
+          quantity: quantity,
+          preference: conversationState.preference
+        };
+        saveConversationState(newState);
         
-        saveConversationState(null);
+      } else if (conversationState.step === 'awaiting_address') {
+        // Save address
+        const address = command.trim();
+        
+        if (address.length < 10) {
+          const msg = "Please provide a complete address with street, area, and city.";
+          setResponse(msg);
+          speak(msg);
+          return;
+        }
+        
+        const msg = "Got it! Now, please provide your phone number.";
+        setResponse(msg);
+        speak(msg);
+        
+        const newState = {
+          ...conversationState,
+          step: 'awaiting_phone',
+          address: address
+        };
+        saveConversationState(newState);
+        
+      } else if (conversationState.step === 'awaiting_phone') {
+        // Extract phone number
+        const phoneMatch = command.match(/\d{10}/);
+        
+        if (!phoneMatch) {
+          const msg = "I didn't catch a valid 10-digit phone number. Please say your phone number clearly.";
+          setResponse(msg);
+          speak(msg);
+          return;
+        }
+        
+        const phone = phoneMatch[0];
+        const msg = "Great! And what's your name?";
+        setResponse(msg);
+        speak(msg);
+        
+        const newState = {
+          ...conversationState,
+          step: 'awaiting_name',
+          phone: phone
+        };
+        saveConversationState(newState);
+        
+      } else if (conversationState.step === 'awaiting_name') {
+        // Save name
+        const name = command.trim();
+        
+        if (name.length < 2) {
+          const msg = "Please tell me your name.";
+          setResponse(msg);
+          speak(msg);
+          return;
+        }
+        
+        const msg = "Perfect! Would you like to pay by Cash on Delivery or Online Payment?";
+        setResponse(msg);
+        speak(msg);
+        
+        const newState = {
+          ...conversationState,
+          step: 'awaiting_payment',
+          name: name
+        };
+        saveConversationState(newState);
+        
+      } else if (conversationState.step === 'awaiting_payment') {
+        // Determine payment method
+        const isCOD = command.includes('cash') || command.includes('cod') || command.includes('delivery');
+        const isOnline = command.includes('online') || command.includes('upi') || command.includes('card');
+        
+        if (!isCOD && !isOnline) {
+          const msg = "Please say 'Cash on Delivery' or 'Online Payment'.";
+          setResponse(msg);
+          speak(msg);
+          return;
+        }
+        
+        const paymentMethod = isCOD ? 'cash' : 'upi';
+        
+        // Place the order
+        await placeVoiceOrder(conversationState, paymentMethod);
       }
     } catch (error) {
       console.error('Error handling follow-up:', error);
@@ -612,6 +690,56 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
     }
 
     return 0;
+  };
+
+  const placeVoiceOrder = async (state, paymentMethod) => {
+    try {
+      const { selectedItem, quantity, name, phone, address } = state;
+      
+      const msg = `Placing your order for ${quantity} ${selectedItem.name}. Please wait...`;
+      setResponse(msg);
+      speak(msg);
+      
+      // Create order via API
+      const orderData = {
+        restaurantId: selectedItem.restaurantId,
+        items: [{
+          menuItemId: selectedItem._id,
+          name: selectedItem.name,
+          price: selectedItem.price,
+          quantity: quantity
+        }],
+        totalAmount: selectedItem.price * quantity,
+        orderType: 'delivery',
+        customerName: name,
+        customerPhone: phone,
+        deliveryAddress: address,
+        paymentStatus: paymentMethod === 'cash' ? 'pending' : 'paid',
+        paymentMethod: paymentMethod
+      };
+      
+      console.log('Placing order:', orderData);
+      
+      const { data } = await axios.post('/api/orders', orderData);
+      
+      const successMsg = `Order placed successfully! Your order ID is ${data._id}. Total amount: ₹${orderData.totalAmount}. ${paymentMethod === 'cash' ? 'Pay cash on delivery.' : 'Payment will be processed.'} Thank you!`;
+      setResponse(successMsg);
+      speak(successMsg);
+      
+      saveConversationState(null);
+      
+      // Redirect to order confirmation after 5 seconds
+      setTimeout(() => {
+        window.location.href = `/restaurant/${selectedItem.restaurantId}`;
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Error placing order:', error);
+      const errorMsg = "Sorry, there was an error placing your order. Please try again or order manually.";
+      setResponse(errorMsg);
+      speak(errorMsg);
+      saveConversationState(null);
+    }
   };
 
   // Don't render if not supported
