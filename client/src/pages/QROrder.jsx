@@ -4,7 +4,6 @@ import { Plus, Minus, Wallet, Smartphone, CheckCircle, ArrowLeft } from 'lucide-
 import axios from 'axios';
 import { initiateRazorpayPayment } from '../components/RazorpayPayment';
 import { App as CapacitorApp } from '@capacitor/app';
-import VoiceAssistant from '../components/VoiceAssistant';
 
 export default function QROrder() {
   const { restaurantId, tableNumber } = useParams();
@@ -218,38 +217,8 @@ export default function QROrder() {
     );
   }
 
-  const handleVoiceOrder = (voiceData) => {
-    console.log('Voice order received:', voiceData);
-    if (voiceData.action === 'order' && voiceData.items.length > 0) {
-      voiceData.items.forEach(voiceItem => {
-        // Find menu item by name or _id
-        const menuItem = restaurant.menu.find(
-          item => item.name.toLowerCase() === voiceItem.name.toLowerCase() ||
-                  item._id === voiceItem._id
-        );
-        
-        if (menuItem) {
-          console.log('Adding to cart:', menuItem.name, 'quantity:', voiceItem.quantity);
-          // Add item multiple times based on quantity
-          for (let i = 0; i < voiceItem.quantity; i++) {
-            addToCart(menuItem);
-          }
-        } else {
-          console.error('Menu item not found:', voiceItem.name);
-        }
-      });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Voice Assistant */}
-      <VoiceAssistant 
-        restaurantId={restaurantId}
-        tableNumber={tableNumber}
-        onOrderProcessed={handleVoiceOrder}
-      />
-      
       {/* Header */}
       <div className="bg-primary text-white p-4 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto">
