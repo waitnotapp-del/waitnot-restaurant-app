@@ -72,6 +72,46 @@ if (existingRestaurants.length === 0) {
   console.log('✅ Database seeded with sample restaurant');
 }
 
+// Auto-seed users if database is empty
+const { userDB } = await import('./db.js');
+const existingUsers = await userDB.findAll();
+if (existingUsers.length === 0) {
+  console.log('📦 Users database is empty, seeding with sample users...');
+  
+  const sampleUsers = [
+    {
+      username: 'aman',
+      name: 'Aman Khan',
+      phone: '9876543210',
+      email: 'aman@example.com',
+      password: await bcrypt.hash('password123', 10),
+      address: '123 Main Street, Downtown, Mumbai, Maharashtra 400001'
+    },
+    {
+      username: 'priya',
+      name: 'Priya Sharma',
+      phone: '9123456789',
+      email: 'priya@example.com',
+      password: await bcrypt.hash('password123', 10),
+      address: '456 Park Avenue, Andheri West, Mumbai, Maharashtra 400058'
+    },
+    {
+      username: 'rahul',
+      name: 'Rahul Verma',
+      phone: '9988776655',
+      email: 'rahul@example.com',
+      password: await bcrypt.hash('password123', 10),
+      address: '789 Lake View Road, Bandra East, Mumbai, Maharashtra 400051'
+    }
+  ];
+  
+  for (const user of sampleUsers) {
+    await userDB.create(user);
+  }
+  
+  console.log('✅ Database seeded with sample users');
+}
+
 // Routes
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/orders', orderRoutes);
