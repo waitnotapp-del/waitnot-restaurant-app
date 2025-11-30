@@ -212,10 +212,29 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
 
       recognitionRef.current.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
+        
+        // Handle permission errors
         if (event.error === 'not-allowed' || event.error === 'permission-denied') {
           setPermissionDenied(true);
           setResponse('Microphone permission denied. Please enable it in your browser settings.');
+          setIsListening(false);
+          return;
         }
+        
+        // Ignore aborted errors (these happen when we manually stop recognition)
+        if (event.error === 'aborted') {
+          console.log('Recognition aborted (expected during TTS)');
+          return;
+        }
+        
+        // For other errors, try to restart if still listening
+        if (event.error === 'no-speech' || event.error === 'audio-capture') {
+          console.log('Temporary error, will restart automatically');
+          return;
+        }
+        
+        // For unexpected errors, stop listening
+        console.error('Unexpected recognition error, stopping');
         setIsListening(false);
       };
 
@@ -315,6 +334,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       const hasFoodRequest = lowerCommand.includes('get me') || 
                             lowerCommand.includes('order') || 
                             lowerCommand.includes('i want') ||
+                            lowerCommand.includes('i need') ||
                             lowerCommand.includes('add');
       
       console.log('Has food request keywords:', hasFoodRequest);
