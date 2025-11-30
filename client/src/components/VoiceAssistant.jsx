@@ -55,7 +55,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       
       // Resume recognition after speaking with longer delay
       utterance.onend = () => {
-        console.log('TTS ended, will restart recognition in 2 seconds');
+        console.log('TTS ended, will restart recognition in 3 seconds');
         setTimeout(() => {
           setIsSpeaking(false);
           isSpeakingRef.current = false;
@@ -67,7 +67,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
               console.log('Could not restart recognition:', e);
             }
           }
-        }, 2000); // Increased delay to 2 seconds
+        }, 3000); // Increased delay to 3 seconds to ensure TTS audio is completely finished
       };
       
       window.speechSynthesis.speak(utterance);
@@ -158,6 +158,28 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           // Don't process if assistant is currently speaking
           if (isSpeakingRef.current) {
             console.log('Ignoring transcript while assistant is speaking:', finalTranscript);
+            return;
+          }
+          
+          // Also ignore if transcript contains common assistant phrases (feedback loop detection)
+          const assistantPhrases = [
+            'would you like',
+            'how many would you like',
+            'please provide',
+            'order placed successfully',
+            'placing your order',
+            'great choice',
+            'perfect',
+            'sure'
+          ];
+          
+          const lowerTranscript = finalTranscript.toLowerCase();
+          const containsAssistantPhrase = assistantPhrases.some(phrase => 
+            lowerTranscript.includes(phrase) && lowerTranscript.length > 50
+          );
+          
+          if (containsAssistantPhrase) {
+            console.log('Ignoring transcript - appears to be assistant feedback:', finalTranscript);
             return;
           }
           
