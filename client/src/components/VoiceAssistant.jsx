@@ -532,7 +532,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       
       saveConversationState(newState);
       
-      const msg = `Sure! Would you like vegetarian or non-vegetarian ${matchedFood}? Say A for vegetarian or B for non-vegetarian.`;
+      const msg = `Sure! Would you like vegetarian or non-vegetarian ${matchedFood}?`;
       setResponse(msg);
       speak(msg);
       
@@ -615,40 +615,48 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       console.log('HandleFollowUp - Current step:', currentState.step);
       
       if (currentState.step === 'awaiting_veg_preference') {
-        // Determine veg/non-veg preference
-        // Look for the LAST occurrence to get user's actual answer (not the question echo)
-        const words = command.split(/\s+/);
-        const lastFewWords = words.slice(-5).join(' '); // Check last 5 words only
+        // Determine veg/non-veg preference with improved recognition
+        const lowerCommand = command.toLowerCase().trim();
         
-        console.log('Checking veg preference in last words:', lastFewWords);
+        console.log('Checking veg preference in command:', lowerCommand);
         
-        // Check for A/B options first (most reliable)
-        const hasA = lastFewWords.includes(' a ') || lastFewWords.includes(' a.') || 
-                     lastFewWords.endsWith(' a') || lastFewWords.includes('option a') ||
-                     lastFewWords.includes('say a');
-        const hasB = lastFewWords.includes(' b ') || lastFewWords.includes(' b.') || 
-                     lastFewWords.endsWith(' b') || lastFewWords.includes('option b') ||
-                     lastFewWords.includes('say b');
+        // Enhanced non-veg detection with multiple variations
+        const nonVegPatterns = [
+          'non vegetarian',
+          'non-vegetarian', 
+          'nonvegetarian',
+          'non veg',
+          'non-veg',
+          'nonveg',
+          'chicken',
+          'meat',
+          'beef',
+          'mutton',
+          'fish',
+          'egg'
+        ];
         
-        // Check for non-veg keywords
-        const isNonVeg = hasB || 
-                        lastFewWords.includes('non-veg') || 
-                        lastFewWords.includes('non veg') ||
-                        lastFewWords.includes('nonveg') ||
-                        lastFewWords.includes('chicken') || 
-                        lastFewWords.includes('meat') ||
-                        (lastFewWords.includes('not') && lastFewWords.includes('veg'));
+        // Enhanced veg detection with multiple variations
+        const vegPatterns = [
+          'vegetarian',
+          'veg ',
+          ' veg',
+          'veggie',
+          'vegetables',
+          'plant based',
+          'plant-based'
+        ];
         
-        // Check for veg (but not if it's part of "non-veg")
-        const isVeg = hasA || (!isNonVeg && (
-          lastFewWords.includes('vegetarian') || 
-          lastFewWords.includes('veg')
-        ));
+        // Check for non-veg first (more specific)
+        const isNonVeg = nonVegPatterns.some(pattern => lowerCommand.includes(pattern));
         
-        console.log('Detected - isVeg:', isVeg, 'isNonVeg:', isNonVeg, 'hasA:', hasA, 'hasB:', hasB);
+        // Check for veg only if not non-veg (to avoid confusion)
+        const isVeg = !isNonVeg && vegPatterns.some(pattern => lowerCommand.includes(pattern));
+        
+        console.log('Detected - isVeg:', isVeg, 'isNonVeg:', isNonVeg);
         
         if (!isVeg && !isNonVeg) {
-          const msg = "I didn't catch that. Please say A for vegetarian or B for non-vegetarian.";
+          const msg = "I didn't catch that. Please say vegetarian or non-vegetarian.";
           setResponse(msg);
           speak(msg);
           return;
