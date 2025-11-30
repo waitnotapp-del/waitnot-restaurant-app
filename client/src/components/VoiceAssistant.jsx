@@ -256,14 +256,21 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
   const processVoiceCommand = async (command) => {
     setIsProcessing(true);
     try {
-      // Reload conversation state from localStorage to ensure we have the latest
-      const latestState = loadConversationState();
-      if (latestState) {
-        conversationStateRef.current = latestState;
-        setConversationState(latestState);
-      }
-      
       const lowerCommand = command.toLowerCase();
+      
+      // Check for wake word first - if present, don't load old state
+      const hasWakeWord = lowerCommand.includes('hey aman') || 
+                         lowerCommand.includes('hey amaan');
+      
+      // Only reload conversation state if NO wake word detected
+      let latestState = null;
+      if (!hasWakeWord) {
+        latestState = loadConversationState();
+        if (latestState) {
+          conversationStateRef.current = latestState;
+          setConversationState(latestState);
+        }
+      }
       console.log('Processing command:', lowerCommand);
       console.log('Restaurant ID:', restaurantId);
       console.log('Conversation state:', latestState || conversationState);
@@ -284,18 +291,17 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       
       console.log('Has food request keywords:', hasFoodRequest);
       
-      // If there's a wake word with food request, ALWAYS clear old state and start fresh
-      const hasWakeWord = lowerCommand.includes('hey aman') || 
-                         lowerCommand.includes('hey amaan');
-      
       if (hasWakeWord) {
         console.log('Wake word detected - clearing any old conversation state');
-        saveConversationState(null); // Clear old state
-        localStorage.removeItem('aman_conversation_state'); // Force clear
+        // Aggressively clear all state
+        localStorage.removeItem('aman_conversation_state');
         conversationStateRef.current = null;
+        setConversationState(null);
         
         if (hasFoodRequest) {
           console.log('Starting fresh food order conversation');
+          // Small delay to ensure state is cleared
+          await new Promise(resolve => setTimeout(resolve, 100));
           await handleSpecificFoodRequest(lowerCommand);
           return;
         }
@@ -825,8 +831,29 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
     return null;
   }
 
+  // Manual reset function
+  const resetConversation = () => {
+    localStorage.removeItem('aman_conversation_state');
+    conversationStateRef.current = null;
+    setConversationState(null);
+    setResponse('');
+    setTranscript('');
+    console.log('Conversation manually reset');
+  };
+
   return (
-    <div className="fixed bottom-32 left-4 z-50">
+    <div className="fixed bottom-32 left-4 z-50 flex flex-col gap-2">
+      {/* Reset Button (only show if in conversation) */}
+      {conversationState && (
+        <button
+          onClick={resetConversation}
+          className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 text-white shadow-lg text-xs"
+          title="Reset conversation"
+        >
+          ↻
+        </button>
+      )}
+      
       {/* Voice Button */}
       <button
         onClick={toggleListening}
