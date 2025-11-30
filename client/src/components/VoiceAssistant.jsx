@@ -44,23 +44,29 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       // Cancel any ongoing speech
       window.speechSynthesis.cancel();
       
+      // STOP recognition BEFORE starting TTS
+      console.log('Stopping recognition before TTS');
+      setIsSpeaking(true);
+      isSpeakingRef.current = true;
+      if (recognitionRef.current && isListening) {
+        try {
+          recognitionRef.current.stop();
+          console.log('Recognition stopped successfully');
+        } catch (e) {
+          console.log('Could not stop recognition:', e);
+        }
+      }
+      
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'en-US';
       utterance.rate = 1.0;
       utterance.volume = 1.0;
       
-      // Pause recognition while speaking to avoid feedback loop
+      // Confirm recognition is stopped when TTS starts
       utterance.onstart = () => {
         console.log('TTS started:', text.substring(0, 50) + '...');
         setIsSpeaking(true);
         isSpeakingRef.current = true;
-        if (recognitionRef.current && isListening) {
-          try {
-            recognitionRef.current.stop();
-          } catch (e) {
-            console.log('Could not stop recognition:', e);
-          }
-        }
       };
       
       // Resume recognition after speaking with optimized delay
