@@ -162,20 +162,27 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
     setIsProcessing(true);
     try {
       const lowerCommand = command.toLowerCase();
+      console.log('Processing command:', lowerCommand);
+      console.log('Restaurant ID:', restaurantId);
+      console.log('Conversation state:', conversationState);
       
       // If we're in a conversation state, handle follow-up
       if (conversationState) {
+        console.log('In conversation, handling follow-up');
         await handleFollowUp(lowerCommand);
         return;
       }
       
       // Check if user is requesting a specific food item on home page
-      if (!restaurantId && (
-        lowerCommand.includes('get me') || 
-        lowerCommand.includes('order') || 
-        lowerCommand.includes('i want') ||
-        lowerCommand.includes('add')
-      )) {
+      const hasFoodRequest = lowerCommand.includes('get me') || 
+                            lowerCommand.includes('order') || 
+                            lowerCommand.includes('i want') ||
+                            lowerCommand.includes('add');
+      
+      console.log('Has food request keywords:', hasFoodRequest);
+      
+      if (!restaurantId && hasFoodRequest) {
+        console.log('Handling specific food request');
         await handleSpecificFoodRequest(lowerCommand);
         return;
       }
@@ -224,11 +231,15 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
 
   const handleSpecificFoodRequest = async (command) => {
     try {
+      console.log('Processing food request:', command);
+      
       // Extract quantity from command
       const requestedQuantity = extractQuantity(command);
+      console.log('Extracted quantity:', requestedQuantity);
       
       // Fetch all restaurants with their menus
       const { data: restaurants } = await axios.get('/api/restaurants');
+      console.log('Fetched restaurants:', restaurants.length);
       
       // Collect all menu items with ratings
       const allItems = [];
@@ -243,20 +254,29 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           });
         }
       });
+      console.log('Total menu items:', allItems.length);
       
-      // Extract food item name from command
-      const foodKeywords = ['pizza', 'burger', 'biryani', 'pasta', 'chicken', 'paneer', 'naan', 'rice', 'dal', 'tikka', 'fries', 'shake', 'lassi', 'coke'];
+      // Extract food item name from command - expanded list
+      const foodKeywords = [
+        'pizza', 'burger', 'biryani', 'pasta', 'chicken', 'paneer', 'naan', 
+        'rice', 'dal', 'tikka', 'fries', 'shake', 'lassi', 'coke', 'pepsi',
+        'sandwich', 'wrap', 'salad', 'soup', 'bread', 'roti', 'paratha',
+        'dosa', 'idli', 'vada', 'samosa', 'pakora', 'kebab', 'curry',
+        'masala', 'korma', 'butter', 'tandoori', 'fried', 'grilled'
+      ];
       let matchedFood = null;
       
       for (const keyword of foodKeywords) {
         if (command.includes(keyword)) {
           matchedFood = keyword;
+          console.log('Matched food keyword:', matchedFood);
           break;
         }
       }
       
       if (!matchedFood) {
-        const msg = "I couldn't identify the food item. Could you please be more specific?";
+        console.log('No food keyword matched in command:', command);
+        const msg = "I couldn't identify the food item. Could you please be more specific? Try saying something like 'get me pizza' or 'order burger'.";
         setResponse(msg);
         speak(msg);
         return;
@@ -267,9 +287,10 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         item.name.toLowerCase().includes(matchedFood) ||
         matchedFood.includes(item.name.toLowerCase().split(' ')[0])
       );
+      console.log('Matching items found:', matchingItems.length);
       
       if (matchingItems.length === 0) {
-        const msg = `Sorry, I couldn't find any ${matchedFood} in our restaurants.`;
+        const msg = `Sorry, I couldn't find any ${matchedFood} in our restaurants. Try asking for something else!`;
         setResponse(msg);
         speak(msg);
         return;
@@ -286,6 +307,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         foodName: matchedFood,
         requestedQuantity: requestedQuantity || null
       });
+      console.log('Conversation state set:', conversationState);
       
     } catch (error) {
       console.error('Error handling food request:', error);
