@@ -1,6 +1,7 @@
 [
   {
     "_id": "user001",
+    "username": "aman",
     "name": "Aman Khan",
     "phone": "9876543210",
     "email": "aman@example.com",
@@ -15,6 +16,7 @@
   },
   {
     "_id": "user002",
+    "username": "priya",
     "name": "Priya Sharma",
     "phone": "9123456789",
     "email": "priya@example.com",
@@ -29,6 +31,7 @@
   },
   {
     "_id": "user003",
+    "username": "rahul",
     "name": "Rahul Verma",
     "phone": "9988776655",
     "email": "rahul@example.com",
