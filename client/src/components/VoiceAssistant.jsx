@@ -32,8 +32,18 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
   // Helper function to speak text
   const speak = (text) => {
     if ('speechSynthesis' in window) {
+      console.log('Speaking:', text);
+      
+      // If already speaking, wait for it to finish
+      if (isSpeakingRef.current) {
+        console.log('Already speaking, queuing message');
+        setTimeout(() => speak(text), 500);
+        return;
+      }
+      
       // Cancel any ongoing speech
       window.speechSynthesis.cancel();
+      
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'en-US';
       utterance.rate = 1.0;
@@ -41,7 +51,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       
       // Pause recognition while speaking to avoid feedback loop
       utterance.onstart = () => {
-        console.log('TTS started, stopping recognition');
+        console.log('TTS started:', text.substring(0, 50) + '...');
         setIsSpeaking(true);
         isSpeakingRef.current = true;
         if (recognitionRef.current && isListening) {
@@ -67,7 +77,13 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
               console.log('Could not restart recognition:', e);
             }
           }
-        }, 3000); // Increased delay to 3 seconds to ensure TTS audio is completely finished
+        }, 3000);
+      };
+      
+      utterance.onerror = (error) => {
+        console.error('TTS error:', error);
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
       };
       
       window.speechSynthesis.speak(utterance);
