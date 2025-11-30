@@ -503,7 +503,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
       
       saveConversationState(newState);
       
-      const msg = `Sure! Would you like a vegetarian or non-vegetarian ${matchedFood}?`;
+      const msg = `Sure! Would you like vegetarian or non-vegetarian ${matchedFood}? Say A for vegetarian or B for non-vegetarian.`;
       setResponse(msg);
       speak(msg);
       
@@ -593,8 +593,17 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         
         console.log('Checking veg preference in last words:', lastFewWords);
         
-        // Check for non-veg first (more specific)
-        const isNonVeg = lastFewWords.includes('non-veg') || 
+        // Check for A/B options first (most reliable)
+        const hasA = lastFewWords.includes(' a ') || lastFewWords.includes(' a.') || 
+                     lastFewWords.endsWith(' a') || lastFewWords.includes('option a') ||
+                     lastFewWords.includes('say a');
+        const hasB = lastFewWords.includes(' b ') || lastFewWords.includes(' b.') || 
+                     lastFewWords.endsWith(' b') || lastFewWords.includes('option b') ||
+                     lastFewWords.includes('say b');
+        
+        // Check for non-veg keywords
+        const isNonVeg = hasB || 
+                        lastFewWords.includes('non-veg') || 
                         lastFewWords.includes('non veg') ||
                         lastFewWords.includes('nonveg') ||
                         lastFewWords.includes('chicken') || 
@@ -602,15 +611,15 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
                         (lastFewWords.includes('not') && lastFewWords.includes('veg'));
         
         // Check for veg (but not if it's part of "non-veg")
-        const isVeg = !isNonVeg && (
+        const isVeg = hasA || (!isNonVeg && (
           lastFewWords.includes('vegetarian') || 
           lastFewWords.includes('veg')
-        );
+        ));
         
-        console.log('Detected - isVeg:', isVeg, 'isNonVeg:', isNonVeg);
+        console.log('Detected - isVeg:', isVeg, 'isNonVeg:', isNonVeg, 'hasA:', hasA, 'hasB:', hasB);
         
         if (!isVeg && !isNonVeg) {
-          const msg = "I didn't catch that. Please say 'vegetarian' or 'non-vegetarian'.";
+          const msg = "I didn't catch that. Please say A for vegetarian or B for non-vegetarian.";
           setResponse(msg);
           speak(msg);
           return;
