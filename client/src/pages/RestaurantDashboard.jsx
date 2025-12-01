@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, QrCode, LogOut, Film, Eye, Heart, X, CreditCard, Moon, Sun, BarChart3 } from 'lucide-react';
+import { Plus, Edit, Trash2, QrCode, LogOut, Film, Eye, Heart, X, CreditCard, Moon, Sun, BarChart3, ShoppingBag, Users, Package } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import BillModal from '../components/BillModal';
@@ -596,28 +596,51 @@ export default function RestaurantDashboard() {
   const dineInOrders = orders.filter(order => order.orderType === 'dine-in');
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-8">
-      <nav className="bg-white dark:bg-gray-800 shadow-md p-3 sm:p-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-primary truncate">{restaurant.name}</h1>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button 
-              onClick={toggleTheme} 
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <button onClick={logout} className="flex items-center gap-1 sm:gap-2 text-gray-700 dark:text-gray-300 hover:text-primary text-sm sm:text-base">
-              <LogOut size={18} className="sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pb-8">
+      {/* Enhanced Header */}
+      <nav className="bg-white dark:bg-gray-800 shadow-lg border-b-4 border-primary">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            {/* Restaurant Info */}
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex w-12 h-12 rounded-full bg-gradient-to-br from-primary to-red-600 items-center justify-center text-white font-bold text-xl shadow-lg">
+                {restaurant.name.charAt(0)}
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-red-600 bg-clip-text text-transparent">
+                  {restaurant.name}
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                  ⭐ {restaurant.rating} • {restaurant.cuisine}
+                </p>
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button 
+                onClick={toggleTheme} 
+                className="p-2.5 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-300 hover:scale-105 transition-all shadow-md"
+                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <button 
+                onClick={logout} 
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white hover:scale-105 transition-all shadow-md font-medium"
+              >
+                <LogOut size={18} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto p-3 sm:p-4 pb-8">
-        <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 overflow-x-auto pb-2 hide-scrollbar">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Enhanced Tab Navigation */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-2 mb-6 overflow-x-auto">
+          <div className="flex gap-2 min-w-max">
           <button
             onClick={() => setActiveTab('delivery')}
             className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg font-semibold whitespace-nowrap text-sm sm:text-base ${
