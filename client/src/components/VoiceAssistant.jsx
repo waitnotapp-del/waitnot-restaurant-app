@@ -37,6 +37,7 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
   const speechQueueRef = useRef([]); // Queue for speech messages
   const lastProcessedCommandRef = useRef(''); // Track last processed command
   const lastProcessedTimeRef = useRef(0); // Track when last command was processed
+  const shouldBeListeningRef = useRef(false); // Track if we should be listening (not affected by TTS pauses)
 
   // Process speech queue
   const processSpeechQueue = () => {
@@ -67,9 +68,10 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         console.log('TTS started:', text.substring(0, 50) + '...');
         setIsSpeaking(true);
         isSpeakingRef.current = true;
-        if (recognitionRef.current && isListening) {
+        if (recognitionRef.current && shouldBeListeningRef.current) {
           try {
             recognitionRef.current.stop();
+            console.log('Recognition paused for TTS');
           } catch (e) {
             console.log('Could not stop recognition:', e);
           }
@@ -88,11 +90,13 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
           processSpeechQueue();
           
           // Restart recognition if no more messages (with extra delay to avoid feedback)
-          if (speechQueueRef.current.length === 0 && isListening) {
+          if (speechQueueRef.current.length === 0 && shouldBeListeningRef.current) {
             setTimeout(() => {
               try {
-                recognitionRef.current?.start();
-                console.log('Recognition restarted after TTS (with safety delay)');
+                if (shouldBeListeningRef.current && recognitionRef.current) {
+                  recognitionRef.current.start();
+                  console.log('✅ Recognition restarted after TTS - ready for next command');
+                }
               } catch (e) {
                 console.log('Could not restart recognition:', e);
               }
@@ -395,6 +399,8 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
+      shouldBeListeningRef.current = false;
+      console.log('🛑 Voice assistant stopped');
     } else {
       try {
         // Request microphone permission with fallback for different platforms
@@ -430,10 +436,11 @@ export default function VoiceAssistant({ restaurantId, tableNumber, onOrderProce
         if (recognitionRef.current) {
           recognitionRef.current.start();
           setIsListening(true);
+          shouldBeListeningRef.current = true;
           setTranscript('');
           setResponse('');
           setPermissionDenied(false);
-          console.log('Speech recognition started');
+          console.log('🎤 Voice assistant started - listening continuously');
         } else {
           throw new Error('Speech recognition not initialized');
         }
