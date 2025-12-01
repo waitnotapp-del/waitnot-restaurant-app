@@ -25,7 +25,7 @@ set JAVA_HOME=%JAVA17_PATH%
 set PATH=%JAVA_HOME%\bin;%PATH%
 
 REM Set Android SDK path
-set ANDROID_HOME=C:\Users\kaif6\AppData\Local\Android\Sdk
+set ANDROID_HOME=C:\Users\ASUS\AppData\Local\Android\Sdk
 set PATH=%ANDROID_HOME%\platform-tools;%ANDROID_HOME%\cmdline-tools\latest\bin;%PATH%
 
 echo [INFO] Using JAVA_HOME: %JAVA_HOME%

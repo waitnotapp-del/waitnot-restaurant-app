@@ -69,13 +69,11 @@
 - **Socket.io Client** - Real-time updates
 - **Axios** - HTTP client
 - **React Router** - Navigation
-- **i18next** - Internationalization
 
 ### Backend
 - **Node.js** - Runtime
 - **Express** - Web framework
 - **Socket.io** - WebSocket server
-- **MongoDB** - Database (optional)
 - **JSON File Storage** - Default data storage
 - **Bcrypt** - Password hashing
 - **JWT** - Authentication
