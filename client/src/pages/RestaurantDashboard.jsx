@@ -6,6 +6,9 @@ import io from 'socket.io-client';
 import BillModal from '../components/BillModal';
 import RestaurantAnalytics from '../components/RestaurantAnalytics';
 import AdvancedAnalytics from '../components/AdvancedAnalytics';
+import AnalyticsExport from '../components/AnalyticsExport';
+import OrderNotifications from '../components/OrderNotifications';
+import QuickStats from '../components/QuickStats';
 import PaymentSettingsTab from '../components/PaymentSettingsTab';
 
 export default function RestaurantDashboard() {
@@ -620,6 +623,7 @@ export default function RestaurantDashboard() {
             
             {/* Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
+              <OrderNotifications orders={orders} />
               <button 
                 onClick={toggleTheme} 
                 className="p-2.5 rounded-xl bg-gradient-to-br from-gray-700 to-gray-800 text-gray-300 hover:text-white hover:scale-105 transition-all shadow-lg border border-gray-600"
@@ -640,6 +644,9 @@ export default function RestaurantDashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Quick Stats */}
+        <QuickStats orders={orders} />
+
         {/* Enhanced Tab Navigation */}
         <div className="bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 rounded-2xl shadow-2xl p-2 mb-6 overflow-x-auto border border-gray-700">
           <div className="flex gap-2 min-w-max">
@@ -719,6 +726,15 @@ export default function RestaurantDashboard() {
           <div className="space-y-6">
             <RestaurantAnalytics orders={orders} restaurant={restaurant} />
             <AdvancedAnalytics orders={orders} restaurant={restaurant} />
+            <AnalyticsExport 
+              orders={orders} 
+              restaurant={restaurant}
+              analytics={{
+                topItems: [],
+                ordersByStatus: {},
+                revenueByDay: []
+              }}
+            />
           </div>
         )}
 
