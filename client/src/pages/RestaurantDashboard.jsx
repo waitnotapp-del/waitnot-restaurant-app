@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, QrCode, LogOut, Film, Eye, Heart, X, CreditCard, Moon, Sun, BarChart3, ShoppingBag, Users, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, QrCode, LogOut, Film, Eye, Heart, X, CreditCard, Moon, Sun, BarChart3, ShoppingBag, Users, Package, DollarSign, TrendingUp } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import BillModal from '../components/BillModal';
@@ -717,7 +717,53 @@ export default function RestaurantDashboard() {
         )}
 
         {activeTab === 'delivery' && (
-          <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-6">
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Orders */}
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <ShoppingBag size={32} className="opacity-80" />
+                  <div className="text-right">
+                    <p className="text-3xl font-bold">{deliveryOrders.length}</p>
+                    <p className="text-sm opacity-90">Delivery Orders</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pending Orders */}
+              <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <Package size={32} className="opacity-80" />
+                  <div className="text-right">
+                    <p className="text-3xl font-bold">{deliveryOrders.filter(o => o.status === 'pending').length}</p>
+                    <p className="text-sm opacity-90">Pending</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Revenue */}
+              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <DollarSign size={32} className="opacity-80" />
+                  <div className="text-right">
+                    <p className="text-3xl font-bold">₹{deliveryOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0).toLocaleString()}</p>
+                    <p className="text-sm opacity-90">Revenue</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Completed Orders */}
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingUp size={32} className="opacity-80" />
+                  <div className="text-right">
+                    <p className="text-3xl font-bold">{deliveryOrders.filter(o => o.status === 'delivered').length}</p>
+                    <p className="text-sm opacity-90">Completed</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 mb-3 sm:mb-4">
               <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">Home Delivery Orders</h2>
               <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Total: {deliveryOrders.length} orders</p>
@@ -833,7 +879,53 @@ export default function RestaurantDashboard() {
         )}
 
         {activeTab === 'dine-in' && (
-          <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-6">
+            {/* Quick Stats Cards for Dine-in */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Tables */}
+              <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <Users size={32} className="opacity-80" />
+                  <div className="text-right">
+                    <p className="text-3xl font-bold">{dineInOrders.length}</p>
+                    <p className="text-sm opacity-90">Table Orders</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Tables */}
+              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <Package size={32} className="opacity-80" />
+                  <div className="text-right">
+                    <p className="text-3xl font-bold">{dineInOrders.filter(o => o.status === 'preparing').length}</p>
+                    <p className="text-sm opacity-90">Preparing</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table Revenue */}
+              <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <DollarSign size={32} className="opacity-80" />
+                  <div className="text-right">
+                    <p className="text-3xl font-bold">₹{dineInOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0).toLocaleString()}</p>
+                    <p className="text-sm opacity-90">Revenue</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Completed Tables */}
+              <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingUp size={32} className="opacity-80" />
+                  <div className="text-right">
+                    <p className="text-3xl font-bold">{dineInOrders.filter(o => o.status === 'completed').length}</p>
+                    <p className="text-sm opacity-90">Completed</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 mb-3 sm:mb-4">
               <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">Dine-In / Table Orders</h2>
               <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Total: {dineInOrders.length} orders</p>
