@@ -6,6 +6,7 @@ import axios from 'axios';
 import { convertNumerals } from '../utils/numberFormatter';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
+import AIAssistant from '../components/AIAssistant';
 
 export default function Home() {
   const { t, i18n } = useTranslation();
@@ -133,6 +134,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16">
       {/* Chatbot */}
       <Chatbot />
+      <AIAssistant />
       
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       {/* Search Section */}
