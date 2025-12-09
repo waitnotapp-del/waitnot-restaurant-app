@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, X, Send, Loader } from 'lucide-react';
+import { Mic, X, Send, Loader } from 'lucide-react';
 
 export default function AIAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -138,11 +138,10 @@ export default function AIAssistant() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 left-4 z-50 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-5 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-2 group"
+          className="fixed bottom-20 left-4 z-50 bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group"
           aria-label="Open AI Assistant"
         >
-          <Sparkles size={24} className="animate-pulse" />
-          <span className="font-semibold hidden sm:inline">AI Assistant</span>
+          <Mic size={28} className="animate-pulse" />
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full"></div>
         </button>
@@ -155,11 +154,11 @@ export default function AIAssistant() {
           <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Sparkles size={28} className="animate-pulse" />
+                <Mic size={28} className="animate-pulse" />
                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
               </div>
               <div>
-                <h3 className="font-bold text-lg">AI Assistant</h3>
+                <h3 className="font-bold text-lg">AI Voice Assistant</h3>
                 <p className="text-xs opacity-90 flex items-center gap-1">
                   <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                   Online & Ready
@@ -191,8 +190,8 @@ export default function AIAssistant() {
                 >
                   {message.sender === 'ai' && (
                     <div className="flex items-center gap-2 mb-2">
-                      <Sparkles size={16} className="text-purple-600 dark:text-purple-400" />
-                      <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">AI</span>
+                      <Mic size={16} className="text-purple-600 dark:text-purple-400" />
+                      <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">AI Voice</span>
                     </div>
                   )}
                   <p className="text-sm whitespace-pre-line">{message.text}</p>
