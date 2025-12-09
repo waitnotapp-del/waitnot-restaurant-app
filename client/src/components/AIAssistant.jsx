@@ -1,47 +1,152 @@
-import { useState } from 'react';
-import { Mic, X, Send, Loader } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Mic, X, Send, Loader, MicOff, Volume2 } from 'lucide-react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 export default function AIAssistant() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "👋 Hi! I'm your AI Assistant. I can help you with:\n\n✨ Restaurant recommendations\n🍽️ Menu suggestions\n📍 Finding nearby options\n⭐ Best rated items\n💡 Answering questions\n\nHow can I help you today?",
+      text: "👋 Hi! I'm your AI Voice Assistant. I can help you with:\n\n✨ Restaurant recommendations\n🍽️ Menu suggestions\n📍 Finding nearby options\n⭐ Best rated items\n🎤 Voice commands\n💡 Answering questions\n\nYou can type or click the mic to speak!",
       sender: 'ai',
       timestamp: new Date()
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [restaurants, setRestaurants] = useState([]);
+  const [transcript, setTranscript] = useState('');
+  const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(window.speechSynthesis);
+
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Fetch restaurants data when component opens
+  useEffect(() => {
+    if (isOpen && restaurants.length === 0) {
+      fetchRestaurants();
+    }
+  }, [isOpen]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        const speechResult = event.results[0][0].transcript;
+        setTranscript(speechResult);
+        setInputMessage(speechResult);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+  }, []);
+
+  const fetchRestaurants = async () => {
+    try {
+      const { data } = await axios.get('/api/restaurants');
+      setRestaurants(data);
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+    }
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } else {
+        addMessage('ai', 'Sorry, voice recognition is not supported in your browser. Please type your message instead.');
+      }
+    }
+  };
+
+  const speak = (text) => {
+    if (synthRef.current && 'speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      synthRef.current.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      
+      synthRef.current.speak(utterance);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if (synthRef.current) {
+      synthRef.current.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const addMessage = (sender, text) => {
+    const newMessage = {
+      id: Date.now(),
+      text,
+      sender,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, newMessage]);
+    
+    // Speak AI responses
+    if (sender === 'ai') {
+      speak(text);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
-    const userMessage = {
-      id: messages.length + 1,
-      text: inputMessage,
-      sender: 'user',
-      timestamp: new Date()
-    };
-
-    setMessages([...messages, userMessage]);
+    addMessage('user', inputMessage);
+    const userQuery = inputMessage;
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse = getAIResponse(inputMessage);
+    // Get AI response
+    setTimeout(async () => {
+      const aiResponse = await getAIResponse(userQuery);
       setIsTyping(false);
-      setMessages(prev => [...prev, {
-        id: prev.length + 1,
-        text: aiResponse,
-        sender: 'ai',
-        timestamp: new Date()
-      }]);
-    }, 1000);
+      addMessage('ai', aiResponse);
+    }, 800);
   };
 
-  const getAIResponse = (message) => {
+  const getAIResponse = async (message) => {
     const lowerMessage = message.toLowerCase();
 
     // Greeting responses
@@ -51,12 +156,109 @@ export default function AIAssistant() {
 
     // Help/What can you do
     if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
-      return "I can assist you with:\n\n🍽️ Finding restaurants\n⭐ Recommending top-rated items\n🔍 Searching specific dishes\n📍 Delivery options\n💰 Budget-friendly choices\n🌶️ Cuisine preferences\n\nJust tell me what you're looking for!";
+      return "I can assist you with:\n\n🍽️ Finding restaurants\n⭐ Recommending top-rated items\n🔍 Searching specific dishes\n📍 Delivery options\n💰 Budget-friendly choices\n🌶️ Cuisine preferences\n🎤 Voice commands\n\nJust tell me what you're looking for!";
     }
 
-    // Restaurant recommendations
-    if (lowerMessage.includes('restaurant') || lowerMessage.includes('where to eat')) {
-      return "🏪 I'd love to help you find a great restaurant! \n\nCould you tell me:\n• What cuisine do you prefer?\n• Any dietary restrictions?\n• Delivery or dine-in?\n• Your budget range?\n\nOr browse our top-rated restaurants on the home page!";
+    // Show restaurants
+    if (lowerMessage.includes('show') && lowerMessage.includes('restaurant')) {
+      if (restaurants.length === 0) {
+        return "Let me fetch the restaurants for you...";
+      }
+      
+      const topRestaurants = restaurants.slice(0, 5);
+      let response = `🏪 Here are ${restaurants.length} restaurants available:\n\n`;
+      
+      topRestaurants.forEach((r, i) => {
+        response += `${i + 1}. ${r.name}\n`;
+        response += `   ⭐ ${r.rating}/5 | 🍴 ${r.cuisine?.join(', ')}\n`;
+        response += `   🕐 ${r.deliveryTime}\n\n`;
+      });
+      
+      if (restaurants.length > 5) {
+        response += `...and ${restaurants.length - 5} more! Browse all on the home page.`;
+      }
+      
+      return response;
+    }
+
+    // Top rated restaurants
+    if ((lowerMessage.includes('top') || lowerMessage.includes('best')) && lowerMessage.includes('restaurant')) {
+      if (restaurants.length === 0) {
+        await fetchRestaurants();
+      }
+      
+      const topRated = [...restaurants]
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 3);
+      
+      if (topRated.length === 0) {
+        return "I'm fetching restaurant data. Please try again in a moment!";
+      }
+      
+      let response = "🌟 Top-rated restaurants:\n\n";
+      topRated.forEach((r, i) => {
+        response += `${i + 1}. ${r.name}\n`;
+        response += `   ⭐ ${r.rating}/5 - ${r.cuisine?.join(', ')}\n`;
+        response += `   🕐 ${r.deliveryTime}\n\n`;
+      });
+      
+      response += "Would you like to see their menus?";
+      return response;
+    }
+
+    // Search specific restaurant
+    const restaurantMatch = restaurants.find(r => 
+      lowerMessage.includes(r.name.toLowerCase())
+    );
+    
+    if (restaurantMatch) {
+      let response = `🏪 ${restaurantMatch.name}\n\n`;
+      response += `⭐ Rating: ${restaurantMatch.rating}/5\n`;
+      response += `🍴 Cuisine: ${restaurantMatch.cuisine?.join(', ')}\n`;
+      response += `🕐 Delivery: ${restaurantMatch.deliveryTime}\n`;
+      response += `📍 ${restaurantMatch.address}\n\n`;
+      
+      if (restaurantMatch.menu && restaurantMatch.menu.length > 0) {
+        response += `Popular items:\n`;
+        restaurantMatch.menu.slice(0, 3).forEach((item, i) => {
+          response += `${i + 1}. ${item.name} - ₹${item.price}\n`;
+        });
+      }
+      
+      response += `\nWould you like to visit this restaurant?`;
+      return response;
+    }
+
+    // Search for specific food items
+    if (lowerMessage.includes('pizza') || lowerMessage.includes('burger') || 
+        lowerMessage.includes('biryani') || lowerMessage.includes('pasta') ||
+        lowerMessage.includes('sandwich') || lowerMessage.includes('chicken')) {
+      
+      const allItems = [];
+      restaurants.forEach(restaurant => {
+        restaurant.menu?.forEach(item => {
+          if (item.name.toLowerCase().includes(lowerMessage.split(' ').find(word => 
+            ['pizza', 'burger', 'biryani', 'pasta', 'sandwich', 'chicken'].includes(word)
+          ))) {
+            allItems.push({
+              ...item,
+              restaurantName: restaurant.name,
+              restaurantId: restaurant._id
+            });
+          }
+        });
+      });
+      
+      if (allItems.length > 0) {
+        let response = `🍽️ Found ${allItems.length} items:\n\n`;
+        allItems.slice(0, 5).forEach((item, i) => {
+          response += `${i + 1}. ${item.name}\n`;
+          response += `   💰 ₹${item.price} | 📍 ${item.restaurantName}\n`;
+          if (item.rating) response += `   ⭐ ${item.rating}/5\n`;
+          response += `\n`;
+        });
+        return response;
+      }
     }
 
     // Food recommendations
@@ -64,9 +266,36 @@ export default function AIAssistant() {
       return "🍽️ Great! Let me help you find something delicious.\n\nPopular choices:\n• Biryani - Aromatic and flavorful\n• Pizza - Classic favorite\n• Burgers - Quick and satisfying\n• Chinese - Variety of options\n• Indian - Rich and spicy\n\nWhat sounds good to you?";
     }
 
-    // Best/Top rated
-    if (lowerMessage.includes('best') || lowerMessage.includes('top') || lowerMessage.includes('recommend')) {
-      return "⭐ Looking for the best? Here's what I suggest:\n\n1. Check our top-rated restaurants (4.5+ stars)\n2. Browse customer reviews\n3. Look for 'Popular' badges\n4. Try our chef's specials\n\nWould you like recommendations for a specific cuisine?";
+    // Best/Top rated items
+    if ((lowerMessage.includes('best') || lowerMessage.includes('top')) && 
+        (lowerMessage.includes('food') || lowerMessage.includes('dish') || lowerMessage.includes('item'))) {
+      
+      const allItems = [];
+      restaurants.forEach(restaurant => {
+        restaurant.menu?.forEach(item => {
+          allItems.push({
+            ...item,
+            restaurantName: restaurant.name
+          });
+        });
+      });
+      
+      const topItems = allItems
+        .filter(item => item.rating && item.rating >= 4)
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 5);
+      
+      if (topItems.length > 0) {
+        let response = "⭐ Top-rated food items:\n\n";
+        topItems.forEach((item, i) => {
+          response += `${i + 1}. ${item.name}\n`;
+          response += `   ⭐ ${item.rating}/5 | ₹${item.price}\n`;
+          response += `   📍 ${item.restaurantName}\n\n`;
+        });
+        return response;
+      }
+      
+      return "⭐ Looking for the best? Browse our restaurants to see top-rated items with customer reviews!";
     }
 
     // Delivery
@@ -219,15 +448,59 @@ export default function AIAssistant() {
 
           {/* Input Area */}
           <div className="p-4 bg-white dark:bg-gray-800 border-t-2 border-purple-200 dark:border-purple-800">
+            {/* Voice Status */}
+            {(isListening || transcript) && (
+              <div className="mb-3 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+                <div className="flex items-center gap-2 text-sm">
+                  {isListening && (
+                    <>
+                      <Mic size={16} className="text-purple-600 animate-pulse" />
+                      <span className="text-purple-600 dark:text-purple-400 font-medium">Listening...</span>
+                    </>
+                  )}
+                  {transcript && !isListening && (
+                    <span className="text-gray-700 dark:text-gray-300">"{transcript}"</span>
+                  )}
+                </div>
+              </div>
+            )}
+            
             <div className="flex gap-2">
+              {/* Voice Button */}
+              <button
+                onClick={toggleListening}
+                className={`p-3 rounded-xl transition-all ${
+                  isListening 
+                    ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                    : 'bg-purple-500 hover:bg-purple-600'
+                } text-white`}
+                aria-label={isListening ? "Stop listening" : "Start voice input"}
+              >
+                {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+              </button>
+              
+              {/* Text Input */}
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask me anything..."
+                placeholder="Type or speak..."
                 className="flex-1 px-4 py-3 border-2 border-purple-300 dark:border-purple-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
               />
+              
+              {/* Speaker Button */}
+              {isSpeaking && (
+                <button
+                  onClick={stopSpeaking}
+                  className="bg-orange-500 hover:bg-orange-600 text-white p-3 rounded-xl transition-all"
+                  aria-label="Stop speaking"
+                >
+                  <Volume2 size={20} className="animate-pulse" />
+                </button>
+              )}
+              
+              {/* Send Button */}
               <button
                 onClick={handleSendMessage}
                 disabled={!inputMessage.trim()}
@@ -237,10 +510,14 @@ export default function AIAssistant() {
                 <Send size={20} />
               </button>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-              Powered by AI • Always here to help
+            
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center flex items-center justify-center gap-2">
+              <Mic size={12} />
+              Voice-enabled AI • Type or speak
             </p>
           </div>
+          
+          <div ref={messagesEndRef} />
         </div>
       )}
     </>
