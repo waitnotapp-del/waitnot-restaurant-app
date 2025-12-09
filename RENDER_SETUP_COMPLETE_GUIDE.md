@@ -117,12 +117,6 @@ JWT_SECRET=your_super_secret_jwt_key_min_32_characters_long_change_this
 # Node Environment
 NODE_ENV=production
 
-# Razorpay Payment Gateway (REQUIRED if using payments)
-RAZORPAY_KEY_ID=rzp_test_RkqqfmhBYvh7c5
-RAZORPAY_KEY_SECRET=U7pcwC3yR7T8rKUch0GEkFqc
-
-# MSG91 SMS Service (REQUIRED if using OTP login)
-MSG91_AUTH_KEY=480068AuNZVGZoLD69289ec2P1
 
 # OpenRouter AI (OPTIONAL - for voice assistant AI processing)
 OPENROUTER_API_KEY=your_openrouter_api_key_here
