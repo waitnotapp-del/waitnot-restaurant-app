@@ -149,7 +149,7 @@ export default function LanguageSelector() {
         title="Change Language"
       >
         <Globe size={20} className="text-gray-700 dark:text-gray-300" />
-        <span className="text-2xl">{currentLanguage.flag}</span>
+        <span className="text-2xl" style={{ fontFamily: 'system-ui, -apple-system, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif' }}>{currentLanguage.flag}</span>
       </button>
 
       {/* Dropdown */}
@@ -188,7 +188,7 @@ export default function LanguageSelector() {
                     i18n.language === lang.code ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-primary' : ''
                   }`}
                 >
-                  <span className="text-3xl min-w-[40px] flex items-center justify-center">{lang.flag}</span>
+                  <span className="text-3xl min-w-[40px] flex items-center justify-center" style={{ fontFamily: 'system-ui, -apple-system, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif' }}>{lang.flag}</span>
                   <div className="flex-1">
                     <p className="font-medium text-gray-800 dark:text-white">{lang.name}</p>
                   </div>
