@@ -20,8 +20,11 @@ export default function AIAssistant() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [restaurants, setRestaurants] = useState([]);
   const [transcript, setTranscript] = useState('');
+  const [isWakeWordActive, setIsWakeWordActive] = useState(true);
+  const [wakeWordDetected, setWakeWordDetected] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const wakeWordRecognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
 
   // Scroll to bottom of messages
@@ -40,7 +43,7 @@ export default function AIAssistant() {
     }
   }, [isOpen]);
 
-  // Initialize speech recognition
+  // Initialize speech recognition for commands
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -66,6 +69,104 @@ export default function AIAssistant() {
       };
     }
   }, []);
+
+  // Initialize wake word detection
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      wakeWordRecognitionRef.current = new SpeechRecognition();
+      wakeWordRecognitionRef.current.continuous = true;
+      wakeWordRecognitionRef.current.interimResults = true;
+      wakeWordRecognitionRef.current.lang = 'en-US';
+
+      wakeWordRecognitionRef.current.onresult = (event) => {
+        const last = event.results.length - 1;
+        const transcript = event.results[last][0].transcript.toLowerCase();
+        
+        console.log('Wake word listening:', transcript);
+        
+        // Check for wake word "hey waiter"
+        if (transcript.includes('hey waiter') || 
+            transcript.includes('hey walter') || 
+            transcript.includes('a waiter') ||
+            transcript.includes('hey writer')) {
+          console.log('Wake word detected!');
+          setWakeWordDetected(true);
+          setIsOpen(true);
+          
+          // Stop wake word detection temporarily
+          wakeWordRecognitionRef.current?.stop();
+          
+          // Speak confirmation
+          speak("Yes, I'm here! How can I help you?");
+          
+          // Add welcome message
+          addMessage('ai', "I heard you! What would you like to know?");
+          
+          // Restart wake word detection after 30 seconds
+          setTimeout(() => {
+            if (!isOpen) {
+              startWakeWordDetection();
+            }
+          }, 30000);
+        }
+      };
+
+      wakeWordRecognitionRef.current.onerror = (event) => {
+        console.error('Wake word recognition error:', event.error);
+        // Restart on error (except if permission denied)
+        if (event.error !== 'not-allowed' && event.error !== 'no-speech') {
+          setTimeout(() => {
+            if (isWakeWordActive && !isOpen) {
+              startWakeWordDetection();
+            }
+          }, 1000);
+        }
+      };
+
+      wakeWordRecognitionRef.current.onend = () => {
+        // Restart wake word detection if still active
+        if (isWakeWordActive && !isOpen) {
+          setTimeout(() => {
+            startWakeWordDetection();
+          }, 500);
+        }
+      };
+    }
+
+    return () => {
+      wakeWordRecognitionRef.current?.stop();
+    };
+  }, [isOpen, isWakeWordActive]);
+
+  // Start wake word detection on mount
+  useEffect(() => {
+    if (isWakeWordActive && !isOpen) {
+      startWakeWordDetection();
+    }
+    
+    return () => {
+      wakeWordRecognitionRef.current?.stop();
+    };
+  }, []);
+
+  const startWakeWordDetection = () => {
+    if (wakeWordRecognitionRef.current && !isOpen) {
+      try {
+        wakeWordRecognitionRef.current.start();
+        console.log('👂 Wake word detection started - Say "Hey Waiter"');
+      } catch (error) {
+        console.error('Failed to start wake word detection:', error);
+      }
+    }
+  };
+
+  const stopWakeWordDetection = () => {
+    if (wakeWordRecognitionRef.current) {
+      wakeWordRecognitionRef.current.stop();
+      console.log('🛑 Wake word detection stopped');
+    }
+  };
 
   const fetchRestaurants = async () => {
     try {
@@ -365,42 +466,91 @@ export default function AIAssistant() {
     <>
       {/* AI Assistant Button - Bottom Left */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 left-4 z-50 bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group"
-          aria-label="Open AI Assistant"
-        >
-          <Mic size={28} className="animate-pulse" />
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full"></div>
-        </button>
+        <div className="fixed bottom-20 left-4 z-50">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group relative"
+            aria-label="Open AI Assistant"
+          >
+            <Mic size={28} className={isWakeWordActive ? "animate-pulse" : ""} />
+            {isWakeWordActive && (
+              <>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full"></div>
+              </>
+            )}
+          </button>
+          
+          {/* Wake Word Status */}
+          {isWakeWordActive && (
+            <div className="absolute -top-12 left-0 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg shadow-lg border border-purple-200 dark:border-purple-700 whitespace-nowrap">
+              <p className="text-xs font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                Say "Hey Waiter"
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       {/* AI Chat Window */}
       {isOpen && (
         <div className="fixed bottom-20 left-4 z-50 w-80 sm:w-96 h-[500px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden border-2 border-purple-500">
           {/* Chat Header */}
-          <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Mic size={28} className="animate-pulse" />
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+          <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Mic size={28} className="animate-pulse" />
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">AI Voice Assistant</h3>
+                  <p className="text-xs opacity-90 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    Online & Ready
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-lg">AI Voice Assistant</h3>
-                <p className="text-xs opacity-90 flex items-center gap-1">
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                  Online & Ready
-                </p>
-              </div>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  // Restart wake word detection when closing
+                  setTimeout(() => startWakeWordDetection(), 500);
+                }}
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="Close AI Assistant"
+              >
+                <X size={20} />
+              </button>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              aria-label="Close AI Assistant"
-            >
-              <X size={20} />
-            </button>
+            
+            {/* Wake Word Toggle */}
+            <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Mic size={14} />
+                <span className="text-xs font-medium">Wake Word: "Hey Waiter"</span>
+              </div>
+              <button
+                onClick={() => {
+                  setIsWakeWordActive(!isWakeWordActive);
+                  if (!isWakeWordActive) {
+                    startWakeWordDetection();
+                  } else {
+                    stopWakeWordDetection();
+                  }
+                }}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  isWakeWordActive ? 'bg-green-400' : 'bg-gray-400'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                    isWakeWordActive ? 'translate-x-5' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           {/* Messages Container */}
