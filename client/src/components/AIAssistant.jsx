@@ -237,12 +237,82 @@ export default function AIAssistant() {
     }
   };
 
+  // Clean text for speech synthesis - remove emojis and symbols but keep readable content
+  const cleanTextForSpeech = (text) => {
+    return text
+      // Remove ALL emojis comprehensively (keep them in UI but don't speak them)
+      .replace(/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]|[\u{1F780}-\u{1F7FF}]|[\u{1F800}-\u{1F8FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2190}-\u{21FF}]|[\u{2300}-\u{23FF}]|[\u{2B00}-\u{2BFF}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]/gu, '')
+      // Remove special Unicode symbols and pictographs
+      .replace(/[\u{25A0}-\u{25FF}]|[\u{2000}-\u{206F}]|[\u{20A0}-\u{20CF}]|[\u{FE00}-\u{FE0F}]|[\u{E000}-\u{F8FF}]/gu, '')
+      // Replace bullet points and list markers
+      .replace(/[•·‣⁃]/g, 'item')
+      .replace(/[▪▫▬]/g, 'item')
+      // Replace currency symbols with words
+      .replace(/₹/g, 'rupees ')
+      .replace(/\$/g, 'dollars ')
+      .replace(/€/g, 'euros ')
+      .replace(/£/g, 'pounds ')
+      .replace(/¥/g, 'yen ')
+      .replace(/₩/g, 'won ')
+      // Replace mathematical and special symbols
+      .replace(/[×÷±≈≠≤≥]/g, '')
+      .replace(/[°℃℉]/g, 'degrees')
+      .replace(/[%]/g, 'percent')
+      .replace(/[™®©]/g, '')
+      // Replace rating format (⭐ 4.5/5 becomes "rated 4.5 out of 5")
+      .replace(/[⭐★☆✦✧✩✪✫⭐]/g, '')
+      .replace(/(\d+\.?\d*)\s*\/\s*(\d+)/g, 'rated $1 out of $2')
+      // Replace time format (30-40 min becomes "30 to 40 minutes")
+      .replace(/(\d+)\s*-\s*(\d+)\s*min/gi, '$1 to $2 minutes')
+      .replace(/(\d+)\s*mins?/gi, '$1 minutes')
+      // Replace common symbols with words
+      .replace(/&/g, 'and')
+      .replace(/@/g, 'at')
+      .replace(/#/g, 'number')
+      .replace(/\+/g, 'plus')
+      .replace(/=/g, 'equals')
+      .replace(/</g, 'less than')
+      .replace(/>/g, 'greater than')
+      // Replace arrows and navigation symbols
+      .replace(/[→←↑↓↔↕⇒⇐⇑⇓⇔⇕]/g, 'to')
+      .replace(/[▶▷►▸]/g, 'next')
+      .replace(/[◀◁◄◂]/g, 'previous')
+      // Replace checkmarks and status symbols
+      .replace(/[✓✔☑]/g, 'yes')
+      .replace(/[✗✘☒]/g, 'no')
+      .replace(/[✅]/g, 'available')
+      .replace(/[❌]/g, 'not available')
+      .replace(/[⚠]/g, 'warning')
+      .replace(/[ℹ]/g, 'information')
+      // Replace punctuation clusters
+      .replace(/[!]{2,}/g, '!')
+      .replace(/[?]{2,}/g, '?')
+      .replace(/[.]{3,}/g, '.')
+      .replace(/[-]{2,}/g, ' ')
+      .replace(/[_]{2,}/g, ' ')
+      .replace(/[~]{2,}/g, ' ')
+      // Replace brackets and special punctuation
+      .replace(/[\[\]{}]/g, '')
+      .replace(/[|]/g, ' ')
+      .replace(/[\\]/g, ' ')
+      .replace(/[`]/g, '')
+      .replace(/[^a-zA-Z0-9\s.,!?'"():;/-]/g, ' ')
+      // Clean up spacing and formatting
+      .replace(/\n{3,}/g, '\n\n') // Max 2 newlines
+      .replace(/\s{2,}/g, ' ') // Max 1 space
+      .replace(/^\s+|\s+$/g, '') // Trim whitespace
+      .trim();
+  };
+
   const speak = (text) => {
     if (synthRef.current && 'speechSynthesis' in window) {
       // Cancel any ongoing speech
       synthRef.current.cancel();
       
-      const utterance = new SpeechSynthesisUtterance(text);
+      // Clean text for speech (remove emojis and symbols)
+      const cleanedText = cleanTextForSpeech(text);
+      
+      const utterance = new SpeechSynthesisUtterance(cleanedText);
       utterance.rate = voiceSettings.rate;
       utterance.pitch = voiceSettings.pitch;
       utterance.volume = voiceSettings.volume;
@@ -814,10 +884,18 @@ export default function AIAssistant() {
 
                 {/* Test Voice Button */}
                 <button
-                  onClick={() => speak("Hello! This is how I sound with your current settings.")}
-                  className="w-full bg-white/20 hover:bg-white/30 text-white text-xs py-2 px-3 rounded transition-colors"
+                  onClick={() => speak("Hello! This is how I sound with your current settings. I can help you find restaurants and food options.")}
+                  className="w-full bg-white/20 hover:bg-white/30 text-white text-xs py-2 px-3 rounded transition-colors mb-2"
                 >
                   Test Voice
+                </button>
+                
+                {/* Test Symbol Cleaning */}
+                <button
+                  onClick={() => speak("📍 Found 3 restaurants near you: 🍕 Pizza Palace • ₹299 • ⭐ 4.5/5 | 🕐 25-30 min ✅ Available for delivery! 🚚")}
+                  className="w-full bg-white/20 hover:bg-white/30 text-white text-xs py-2 px-3 rounded transition-colors"
+                >
+                  Test Symbol Cleaning
                 </button>
               </div>
             )}
