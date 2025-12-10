@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react';
 import { MapPin, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { checkDeliveryAvailability } from '../utils/geolocation';
+import { reverseGeocode } from '../utils/geocoding';
+import AddressDisplay from './AddressDisplay';
 
 export default function DeliveryZoneChecker({ restaurant, onZoneCheck }) {
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
 
   const handleCheck = async () => {
     setChecking(true);
     try {
       const checkResult = await checkDeliveryAvailability(restaurant);
       setResult(checkResult);
+      
+      // Store user location for address display
+      if (checkResult.userLocation) {
+        setUserLocation(checkResult.userLocation);
+      }
+      
       if (onZoneCheck) {
         onZoneCheck(checkResult);
       }
@@ -121,6 +130,18 @@ export default function DeliveryZoneChecker({ restaurant, onZoneCheck }) {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* User Location Address Display */}
+          {userLocation && (
+            <div className="mt-4">
+              <AddressDisplay
+                latitude={userLocation.latitude}
+                longitude={userLocation.longitude}
+                showFullAddress={false}
+                className="border-t border-gray-200 dark:border-gray-700 pt-4"
+              />
             </div>
           )}
         </div>

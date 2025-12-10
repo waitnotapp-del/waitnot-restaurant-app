@@ -80,12 +80,16 @@ export function checkDeliveryZone(restaurant, userLocation) {
 /**
  * Check delivery availability for a restaurant
  * @param {Object} restaurant - Restaurant object
- * @returns {Promise<Object>} {allowed: boolean, distance: number, error?: string}
+ * @returns {Promise<Object>} {allowed: boolean, distance: number, userLocation?: Object, error?: string}
  */
 export async function checkDeliveryAvailability(restaurant) {
   try {
     const userLocation = await getUserLocation();
-    return checkDeliveryZone(restaurant, userLocation);
+    const result = checkDeliveryZone(restaurant, userLocation);
+    return {
+      ...result,
+      userLocation
+    };
   } catch (err) {
     console.error("Error getting user location:", err);
     return { 

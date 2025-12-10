@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Save, Loader, CheckCircle, AlertCircle } from 'lucide-react';
+import AddressDisplay from './AddressDisplay';
 
 export default function RestaurantLocationSettings({ restaurant, onSave }) {
   const [formData, setFormData] = useState({
@@ -184,6 +185,23 @@ export default function RestaurantLocationSettings({ restaurant, onSave }) {
             </button>
           )}
         </div>
+
+        {/* Address Display */}
+        {formData.latitude && formData.longitude && (
+          <AddressDisplay
+            latitude={parseFloat(formData.latitude)}
+            longitude={parseFloat(formData.longitude)}
+            showFullAddress={true}
+            onAddressFound={(address) => {
+              if (address.success && !formData.address) {
+                setFormData(prev => ({
+                  ...prev,
+                  address: address.formatted || address.displayName
+                }));
+              }
+            }}
+          />
+        )}
 
         {/* Delivery Radius */}
         <div>

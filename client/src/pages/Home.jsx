@@ -8,6 +8,7 @@ import { getUserLocation } from '../utils/geolocation';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
+import AddressDisplay from '../components/AddressDisplay';
 
 export default function Home() {
   const { t, i18n } = useTranslation();
@@ -220,13 +221,24 @@ export default function Home() {
           </button>
         </div>
         
-        {/* Location Status */}
+        {/* Location Status & Address */}
         {userLocation && (
-          <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
-            <MapPin size={16} className="text-green-600 dark:text-green-400" />
-            <span className="text-sm text-green-700 dark:text-green-300">
-              Location detected • Delivery zones available
-            </span>
+          <div className="mt-3 space-y-3">
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+              <MapPin size={16} className="text-green-600 dark:text-green-400" />
+              <span className="text-sm text-green-700 dark:text-green-300">
+                Location detected • Delivery zones available
+              </span>
+            </div>
+            
+            <AddressDisplay
+              latitude={userLocation.latitude}
+              longitude={userLocation.longitude}
+              showFullAddress={false}
+              onAddressFound={(address) => {
+                console.log('Address found:', address);
+              }}
+            />
           </div>
         )}
         
