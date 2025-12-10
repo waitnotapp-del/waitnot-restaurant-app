@@ -25,7 +25,12 @@ export default function Home() {
 
   useEffect(() => {
     // Automatically detect location and fetch nearby restaurants
-    detectLocationAndFetchNearby();
+    // Add small delay to ensure component is fully mounted
+    const timer = setTimeout(() => {
+      detectLocationAndFetchNearby();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const detectLocationAndFetchNearby = async () => {
@@ -33,22 +38,34 @@ export default function Home() {
     setLocationError(null);
     
     try {
+      console.log('🎯 Starting location detection...');
       const location = await getUserLocation();
+      
+      console.log('✅ Location detected:', {
+        latitude: location.latitude.toFixed(6),
+        longitude: location.longitude.toFixed(6),
+        accuracy: location.accuracy ? `${location.accuracy}m` : 'Unknown'
+      });
+      
       setUserLocation(location);
       
-      // Show success message for 5 seconds
+      // Show success message with accuracy info for 5 seconds
       setShowLocationSuccess(true);
       setTimeout(() => {
         setShowLocationSuccess(false);
       }, 5000);
       
-      // Fetch nearby restaurants with the detected location
+      // Fetch nearby restaurants immediately (parallel with success message)
+      console.log('🔍 Searching for nearby restaurants...');
       await fetchNearbyRestaurants(location.latitude, location.longitude);
       setShowingNearby(true);
+      
     } catch (error) {
-      console.error('Location error:', error);
+      console.error('❌ Location detection failed:', error);
       setLocationError(error.message || 'Failed to get location');
+      
       // Fallback to all restaurants if location fails
+      console.log('📍 Falling back to all restaurants...');
       await fetchAllRestaurants();
     } finally {
       setLocationLoading(false);
@@ -59,17 +76,26 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching nearby restaurants...');
+      
+      const startTime = performance.now();
+      console.log('🔍 Fetching nearby restaurants...');
       
       const { data } = await axios.post('/api/restaurants/nearby', {
         latitude,
         longitude
       });
       
-      console.log('Nearby restaurants fetched:', data.nearbyRestaurants.length);
+      const endTime = performance.now();
+      const loadTime = Math.round(endTime - startTime);
+      
+      console.log(`✅ Nearby restaurants loaded in ${loadTime}ms:`, {
+        found: data.nearbyRestaurants.length,
+        userLocation: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+      });
+      
       setRestaurants(data.nearbyRestaurants);
     } catch (error) {
-      console.error('Error fetching nearby restaurants:', error);
+      console.error('❌ Error fetching nearby restaurants:', error);
       setError(error.message || 'Failed to load nearby restaurants');
     } finally {
       setLoading(false);
@@ -230,10 +256,16 @@ export default function Home() {
             disabled={locationLoading}
             className={`${
               userLocation 
-                ? 'bg-green-500 hover:bg-green-600' 
+                ? userLocation.accuracy && userLocation.accuracy <= 50
+                  ? 'bg-green-500 hover:bg-green-600' 
+                  : 'bg-yellow-500 hover:bg-yellow-600'
                 : 'bg-blue-500 hover:bg-blue-600'
             } text-white p-2.5 sm:p-3 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed relative`}
-            title={userLocation ? "Location Detected" : "Detect My Location"}
+            title={
+              userLocation 
+                ? `Location: ${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}${userLocation.accuracy ? ` (±${userLocation.accuracy}m)` : ''}`
+                : "Detect My Location"
+            }
           >
             {locationLoading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
@@ -241,7 +273,11 @@ export default function Home() {
               <>
                 <Navigation size={20} className={userLocation ? 'animate-pulse' : ''} />
                 {userLocation && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></span>
+                  <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
+                    userLocation.accuracy && userLocation.accuracy <= 50 
+                      ? 'bg-green-400' 
+                      : 'bg-yellow-400'
+                  }`}></span>
                 )}
               </>
             )}
@@ -258,13 +294,21 @@ export default function Home() {
         </div>
         
         {/* Location Success Message - Shows for 5 seconds */}
-        {showLocationSuccess && (
+        {showLocationSuccess && userLocation && (
           <div className="mt-3">
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2 animate-fade-in">
-              <MapPin size={16} className="text-green-600 dark:text-green-400" />
-              <span className="text-sm text-green-700 dark:text-green-300">
-                Location detected • Delivery zones available
-              </span>
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg animate-fade-in">
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin size={16} className="text-green-600 dark:text-green-400" />
+                <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                  Location detected • Delivery zones available
+                </span>
+              </div>
+              <div className="text-xs text-green-600 dark:text-green-400 ml-5">
+                📍 {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+                {userLocation.accuracy && (
+                  <span className="ml-2">• Accuracy: {userLocation.accuracy}m</span>
+                )}
+              </div>
             </div>
           </div>
         )}
