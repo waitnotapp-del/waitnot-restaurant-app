@@ -64,12 +64,11 @@ export default function Home() {
       const location = await getUserLocation();
       setUserLocation(location);
       
-      // Show success message
-      alert(`Location detected!\nLatitude: ${location.latitude.toFixed(6)}\nLongitude: ${location.longitude.toFixed(6)}\n\nYou can now check delivery zones for restaurants.`);
+      // Location detected - no alert needed, UI will show the address
     } catch (error) {
       console.error('Location error:', error);
       setLocationError(error.message || 'Failed to get location');
-      alert('Failed to get your location. Please enable location permissions in your browser settings.');
+      // Error will be shown in the UI via locationError state
     } finally {
       setLocationLoading(false);
     }

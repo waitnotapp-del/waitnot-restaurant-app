@@ -1971,7 +1971,7 @@ export default function RestaurantDashboard() {
                   { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setRestaurant(response.data);
-                alert('Location settings saved successfully!');
+                // Location settings saved - success will be shown in the component UI
               } catch (error) {
                 console.error('Error saving location:', error);
                 throw error;
