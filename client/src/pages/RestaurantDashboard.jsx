@@ -1965,7 +1965,12 @@ export default function RestaurantDashboard() {
             onSave={async (locationData) => {
               try {
                 const token = localStorage.getItem('restaurantToken');
-                const restaurantId = restaurant._id;
+                // CRITICAL: Use sessionStorage (tab-specific) not localStorage for restaurant ID
+                const restaurantId = sessionStorage.getItem('restaurantId') || localStorage.getItem('restaurantId');
+                
+                if (!restaurantId) {
+                  throw new Error('Restaurant ID not found. Please login again.');
+                }
                 
                 console.log('Saving location for restaurant:', restaurantId);
                 console.log('Location data:', locationData);
@@ -1984,7 +1989,7 @@ export default function RestaurantDashboard() {
                 console.error('Error saving location:', error);
                 console.error('Error details:', error.response?.data);
                 console.error('Status:', error.response?.status);
-                console.error('Restaurant ID:', restaurant._id);
+                console.error('Restaurant ID from storage:', sessionStorage.getItem('restaurantId') || localStorage.getItem('restaurantId'));
                 throw error;
               }
             }}
