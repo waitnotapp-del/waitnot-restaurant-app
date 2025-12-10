@@ -21,6 +21,7 @@ export default function Home() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
   const [showingNearby, setShowingNearby] = useState(false);
+  const [showLocationSuccess, setShowLocationSuccess] = useState(false);
 
   useEffect(() => {
     // Automatically detect location and fetch nearby restaurants
@@ -34,6 +35,12 @@ export default function Home() {
     try {
       const location = await getUserLocation();
       setUserLocation(location);
+      
+      // Show success message for 5 seconds
+      setShowLocationSuccess(true);
+      setTimeout(() => {
+        setShowLocationSuccess(false);
+      }, 5000);
       
       // Fetch nearby restaurants with the detected location
       await fetchNearbyRestaurants(location.latitude, location.longitude);
@@ -250,24 +257,15 @@ export default function Home() {
           </button>
         </div>
         
-        {/* Location Status & Address */}
-        {userLocation && (
-          <div className="mt-3 space-y-3">
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+        {/* Location Success Message - Shows for 5 seconds */}
+        {showLocationSuccess && (
+          <div className="mt-3">
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2 animate-fade-in">
               <MapPin size={16} className="text-green-600 dark:text-green-400" />
               <span className="text-sm text-green-700 dark:text-green-300">
                 Location detected • Delivery zones available
               </span>
             </div>
-            
-            <AddressDisplay
-              latitude={userLocation.latitude}
-              longitude={userLocation.longitude}
-              showFullAddress={false}
-              onAddressFound={(address) => {
-                console.log('Address found:', address);
-              }}
-            />
           </div>
         )}
         
