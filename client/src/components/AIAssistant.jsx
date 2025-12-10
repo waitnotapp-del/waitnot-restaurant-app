@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, X, Send, Loader, MicOff, Volume2 } from 'lucide-react';
+import { Mic, X, Send, Loader, MicOff, Volume2, Settings, Star, MapPin, Clock, Zap, Brain, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,6 +22,21 @@ export default function AIAssistant() {
   const [transcript, setTranscript] = useState('');
   const [isWakeWordActive, setIsWakeWordActive] = useState(true);
   const [wakeWordDetected, setWakeWordDetected] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [voiceSettings, setVoiceSettings] = useState({
+    rate: 1.0,
+    pitch: 1.0,
+    volume: 1.0,
+    voice: null
+  });
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [conversationMode, setConversationMode] = useState(false);
+  const [quickActions, setQuickActions] = useState([
+    { id: 1, text: "Show nearby restaurants", icon: MapPin },
+    { id: 2, text: "What's popular today?", icon: Star },
+    { id: 3, text: "Quick delivery options", icon: Clock },
+    { id: 4, text: "Best rated items", icon: Zap }
+  ]);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const wakeWordRecognitionRef = useRef(null);
@@ -42,6 +57,30 @@ export default function AIAssistant() {
       fetchRestaurants();
     }
   }, [isOpen]);
+
+  // Load available voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = synthRef.current.getVoices();
+      setAvailableVoices(voices);
+      
+      // Set default voice (prefer female English voice)
+      const defaultVoice = voices.find(voice => 
+        voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female')
+      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+      
+      if (defaultVoice) {
+        setVoiceSettings(prev => ({ ...prev, voice: defaultVoice }));
+      }
+    };
+
+    loadVoices();
+    synthRef.current.addEventListener('voiceschanged', loadVoices);
+    
+    return () => {
+      synthRef.current.removeEventListener('voiceschanged', loadVoices);
+    };
+  }, []);
 
   // Initialize speech recognition for commands
   useEffect(() => {
@@ -204,12 +243,26 @@ export default function AIAssistant() {
       synthRef.current.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
+      utterance.rate = voiceSettings.rate;
+      utterance.pitch = voiceSettings.pitch;
+      utterance.volume = voiceSettings.volume;
+      
+      if (voiceSettings.voice) {
+        utterance.voice = voiceSettings.voice;
+      }
       
       utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        // In conversation mode, start listening after AI finishes speaking
+        if (conversationMode && isOpen) {
+          setTimeout(() => {
+            if (recognitionRef.current && !isListening) {
+              toggleListening();
+            }
+          }, 500);
+        }
+      };
       utterance.onerror = () => setIsSpeaking(false);
       
       synthRef.current.speak(utterance);
@@ -273,9 +326,57 @@ export default function AIAssistant() {
   const getAIResponse = async (message) => {
     const lowerMessage = message.toLowerCase();
 
+    // Check for location-based queries first
+    if (lowerMessage.includes('nearby') || lowerMessage.includes('near me') || lowerMessage.includes('close')) {
+      try {
+        // Try to get user's location
+        if (navigator.geolocation) {
+          return new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              async (position) => {
+                const { latitude, longitude } = position.coords;
+                try {
+                  const response = await axios.post('/api/restaurants/nearby', {
+                    latitude,
+                    longitude
+                  });
+                  
+                  const nearbyRestaurants = response.data.nearbyRestaurants;
+                  if (nearbyRestaurants.length > 0) {
+                    let reply = `📍 Found ${nearbyRestaurants.length} restaurants near you:\n\n`;
+                    nearbyRestaurants.slice(0, 5).forEach((r, i) => {
+                      reply += `${i + 1}. ${r.name}\n`;
+                      reply += `   📍 ${r.distanceKm} km away\n`;
+                      reply += `   ⭐ ${r.rating}/5 | 🕐 ${r.deliveryTime}\n\n`;
+                    });
+                    reply += "Would you like to see menus or get more details about any of these?";
+                    resolve(reply);
+                  } else {
+                    resolve("📍 I couldn't find any restaurants that deliver to your current location. Try browsing all restaurants or check if you're in a delivery zone.");
+                  }
+                } catch (error) {
+                  resolve("📍 I can see you're looking for nearby restaurants! Please check the home page where I automatically show restaurants that deliver to your location.");
+                }
+              },
+              () => {
+                resolve("📍 To show nearby restaurants, I need your location. Please allow location access or check the home page for location-based results!");
+              }
+            );
+          });
+        }
+      } catch (error) {
+        return "📍 I can help you find nearby restaurants! Check the home page where restaurants are automatically filtered based on your location.";
+      }
+    }
+
     // Greeting responses
     if (lowerMessage.match(/^(hi|hello|hey|good morning|good afternoon|good evening)/)) {
-      return "Hello! 👋 I'm here to help you find the perfect meal. What are you in the mood for today?";
+      const greetings = [
+        "Hello! 👋 I'm here to help you find the perfect meal. What are you in the mood for today?",
+        "Hi there! 🍽️ Ready to discover some delicious food? What can I help you with?",
+        "Hey! 😊 I'm your food assistant. Looking for something specific or want recommendations?"
+      ];
+      return greetings[Math.floor(Math.random() * greetings.length)];
     }
 
     // Help/What can you do
@@ -474,8 +575,29 @@ export default function AIAssistant() {
       return "You're welcome! 😊 Is there anything else I can help you with?";
     }
 
-    // Default response
-    return "I'm here to help! 🤖\n\nI can assist with:\n• Restaurant recommendations\n• Menu suggestions\n• Delivery information\n• Pricing details\n• Order assistance\n\nWhat would you like to know?";
+    // Smart contextual responses
+    if (lowerMessage.includes('recommend') || lowerMessage.includes('suggest')) {
+      const suggestions = [
+        "🌟 Based on popularity, I'd recommend:\n• Biryani - Always a crowd favorite\n• Pizza - Quick and satisfying\n• Burgers - Great for a quick bite\n\nWhat type of cuisine interests you?",
+        "🍽️ Here are some great options:\n• For spicy food lovers: Indian cuisine\n• For comfort food: Italian pasta & pizza\n• For healthy options: Salads and grilled items\n\nTell me your preference!",
+        "⭐ Top picks right now:\n• Chicken Biryani - Aromatic and filling\n• Margherita Pizza - Classic choice\n• Paneer Tikka - Vegetarian favorite\n\nWant details about any of these?"
+      ];
+      return suggestions[Math.floor(Math.random() * suggestions.length)];
+    }
+
+    // Conversation starters
+    if (lowerMessage.includes('what') && (lowerMessage.includes('good') || lowerMessage.includes('popular'))) {
+      return "🔥 What's trending today:\n\n• Biryani dishes are very popular\n• Pizza combos are in demand\n• Healthy salad bowls are trending\n• Desserts are always a hit!\n\nAny of these sound appealing to you?";
+    }
+
+    // Default response with personality
+    const defaultResponses = [
+      "I'm here to help! 🤖\n\nI can assist with:\n• Restaurant recommendations\n• Menu suggestions\n• Delivery information\n• Pricing details\n• Order assistance\n\nWhat would you like to know?",
+      "🍽️ I'm your food companion! I can help you:\n\n• Find the perfect restaurant\n• Discover new dishes\n• Check delivery options\n• Compare prices\n• Place orders\n\nWhat sounds interesting?",
+      "Hey! 😊 I'm here to make your food ordering experience amazing!\n\nI can help with:\n• Personalized recommendations\n• Restaurant details\n• Menu exploration\n• Quick ordering\n\nWhat can I do for you today?"
+    ];
+    
+    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   };
 
   const handleKeyPress = (e) => {
@@ -483,6 +605,17 @@ export default function AIAssistant() {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleQuickAction = (actionText) => {
+    setInputMessage(actionText);
+    setTimeout(() => {
+      handleSendMessage();
+    }, 100);
+  };
+
+  const updateVoiceSettings = (newSettings) => {
+    setVoiceSettings(prev => ({ ...prev, ...newSettings }));
   };
 
   return (
@@ -524,57 +657,196 @@ export default function AIAssistant() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Mic size={28} className="animate-pulse" />
+                  <Brain size={28} className="animate-pulse" />
                   <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">AI Voice Assistant</h3>
+                  <h3 className="font-bold text-lg flex items-center gap-2">
+                    AI Voice Assistant
+                    {conversationMode && <MessageCircle size={16} className="animate-bounce" />}
+                  </h3>
                   <p className="text-xs opacity-90 flex items-center gap-1">
                     <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                    Online & Ready
+                    {conversationMode ? 'Conversation Mode' : 'Online & Ready'}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  // Restart wake word detection when closing
-                  setTimeout(() => startWakeWordDetection(), 500);
-                }}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                aria-label="Close AI Assistant"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                  aria-label="Voice Settings"
+                >
+                  <Settings size={18} />
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setShowSettings(false);
+                    // Restart wake word detection when closing
+                    setTimeout(() => startWakeWordDetection(), 500);
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                  aria-label="Close AI Assistant"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
             
-            {/* Wake Word Toggle */}
-            <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Mic size={14} />
-                <span className="text-xs font-medium">Wake Word: "Hey Waiter"</span>
-              </div>
-              <button
-                onClick={() => {
-                  setIsWakeWordActive(!isWakeWordActive);
-                  if (!isWakeWordActive) {
-                    startWakeWordDetection();
-                  } else {
-                    stopWakeWordDetection();
-                  }
-                }}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  isWakeWordActive ? 'bg-green-400' : 'bg-gray-400'
-                }`}
-              >
-                <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                    isWakeWordActive ? 'translate-x-5' : 'translate-x-1'
+            {/* Controls */}
+            <div className="space-y-2">
+              {/* Wake Word Toggle */}
+              <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Mic size={14} />
+                  <span className="text-xs font-medium">Wake Word: "Hey Waiter"</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsWakeWordActive(!isWakeWordActive);
+                    if (!isWakeWordActive) {
+                      startWakeWordDetection();
+                    } else {
+                      stopWakeWordDetection();
+                    }
+                  }}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    isWakeWordActive ? 'bg-green-400' : 'bg-gray-400'
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      isWakeWordActive ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Conversation Mode Toggle */}
+              <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <MessageCircle size={14} />
+                  <span className="text-xs font-medium">Conversation Mode</span>
+                </div>
+                <button
+                  onClick={() => setConversationMode(!conversationMode)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    conversationMode ? 'bg-green-400' : 'bg-gray-400'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      conversationMode ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
+
+            {/* Voice Settings Panel */}
+            {showSettings && (
+              <div className="mt-3 bg-white/10 rounded-lg p-3 space-y-3">
+                <h4 className="text-sm font-semibold">Voice Settings</h4>
+                
+                {/* Voice Selection */}
+                {availableVoices.length > 0 && (
+                  <div>
+                    <label className="text-xs font-medium block mb-1">Voice</label>
+                    <select
+                      value={voiceSettings.voice?.name || ''}
+                      onChange={(e) => {
+                        const selectedVoice = availableVoices.find(v => v.name === e.target.value);
+                        updateVoiceSettings({ voice: selectedVoice });
+                      }}
+                      className="w-full text-xs bg-white/20 border border-white/30 rounded px-2 py-1 text-white"
+                    >
+                      {availableVoices.filter(voice => voice.lang.startsWith('en')).map((voice) => (
+                        <option key={voice.name} value={voice.name} className="text-black">
+                          {voice.name} ({voice.lang})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Speed Control */}
+                <div>
+                  <label className="text-xs font-medium block mb-1">Speed: {voiceSettings.rate.toFixed(1)}x</label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    value={voiceSettings.rate}
+                    onChange={(e) => updateVoiceSettings({ rate: parseFloat(e.target.value) })}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Pitch Control */}
+                <div>
+                  <label className="text-xs font-medium block mb-1">Pitch: {voiceSettings.pitch.toFixed(1)}</label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    value={voiceSettings.pitch}
+                    onChange={(e) => updateVoiceSettings({ pitch: parseFloat(e.target.value) })}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Volume Control */}
+                <div>
+                  <label className="text-xs font-medium block mb-1">Volume: {Math.round(voiceSettings.volume * 100)}%</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={voiceSettings.volume}
+                    onChange={(e) => updateVoiceSettings({ volume: parseFloat(e.target.value) })}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Test Voice Button */}
+                <button
+                  onClick={() => speak("Hello! This is how I sound with your current settings.")}
+                  className="w-full bg-white/20 hover:bg-white/30 text-white text-xs py-2 px-3 rounded transition-colors"
+                >
+                  Test Voice
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Quick Actions */}
+          {messages.length <= 1 && (
+            <div className="p-4 bg-gradient-to-b from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 border-b border-purple-200 dark:border-purple-800">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <Zap size={16} className="text-purple-600" />
+                Quick Actions
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                {quickActions.map((action) => {
+                  const IconComponent = action.icon;
+                  return (
+                    <button
+                      key={action.id}
+                      onClick={() => handleQuickAction(action.text)}
+                      className="flex items-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
+                    >
+                      <IconComponent size={16} className="text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{action.text}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
@@ -693,10 +965,18 @@ export default function AIAssistant() {
               )}
             </div>
             
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center flex items-center justify-center gap-2">
-              <Mic size={12} />
-              {isListening ? 'Speak now - Auto-sends when done' : 'Click mic to speak • Auto-sends voice messages'}
-            </p>
+            <div className="mt-2 text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2">
+                <Mic size={12} />
+                {isListening ? 'Speak now - Auto-sends when done' : 'Click mic to speak • Auto-sends voice messages'}
+              </p>
+              {conversationMode && (
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 flex items-center justify-center gap-1">
+                  <MessageCircle size={12} />
+                  Conversation mode: AI will listen after responding
+                </p>
+              )}
+            </div>
           </div>
           
           <div ref={messagesEndRef} />
