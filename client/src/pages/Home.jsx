@@ -20,24 +20,68 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
+  const [showingNearby, setShowingNearby] = useState(false);
 
   useEffect(() => {
-    // Load all restaurants on initial mount
-    fetchRestaurants();
+    // Automatically detect location and fetch nearby restaurants
+    detectLocationAndFetchNearby();
   }, []);
 
-  const fetchRestaurants = async (query = '') => {
+  const detectLocationAndFetchNearby = async () => {
+    setLocationLoading(true);
+    setLocationError(null);
+    
+    try {
+      const location = await getUserLocation();
+      setUserLocation(location);
+      
+      // Fetch nearby restaurants with the detected location
+      await fetchNearbyRestaurants(location.latitude, location.longitude);
+      setShowingNearby(true);
+    } catch (error) {
+      console.error('Location error:', error);
+      setLocationError(error.message || 'Failed to get location');
+      // Fallback to all restaurants if location fails
+      await fetchAllRestaurants();
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const fetchNearbyRestaurants = async (latitude, longitude) => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching restaurants...');
+      console.log('Fetching nearby restaurants...');
+      
+      const { data } = await axios.post('/api/restaurants/nearby', {
+        latitude,
+        longitude
+      });
+      
+      console.log('Nearby restaurants fetched:', data.nearbyRestaurants.length);
+      setRestaurants(data.nearbyRestaurants);
+    } catch (error) {
+      console.error('Error fetching nearby restaurants:', error);
+      setError(error.message || 'Failed to load nearby restaurants');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAllRestaurants = async (query = '') => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching all restaurants...');
       
       const params = {};
       if (query) params.q = query;
       
       const { data } = await axios.get('/api/restaurants/search', { params });
-      console.log('Restaurants fetched:', data.length);
+      console.log('All restaurants fetched:', data.length);
       setRestaurants(data);
+      setShowingNearby(false);
     } catch (error) {
       console.error('Error fetching restaurants:', error);
       setError(error.message || 'Failed to load restaurants');
@@ -47,7 +91,7 @@ export default function Home() {
   };
 
   const handleSearch = () => {
-    fetchRestaurants(searchQuery);
+    fetchAllRestaurants(searchQuery);
   };
 
   const handleKeyPress = (e) => {
@@ -57,21 +101,7 @@ export default function Home() {
   };
 
   const handleDetectLocation = async () => {
-    setLocationLoading(true);
-    setLocationError(null);
-    
-    try {
-      const location = await getUserLocation();
-      setUserLocation(location);
-      
-      // Location detected - no alert needed, UI will show the address
-    } catch (error) {
-      console.error('Location error:', error);
-      setLocationError(error.message || 'Failed to get location');
-      // Error will be shown in the UI via locationError state
-    } finally {
-      setLocationLoading(false);
-    }
+    await detectLocationAndFetchNearby();
   };
 
   if (loading) {
@@ -250,17 +280,20 @@ export default function Home() {
           </div>
         )}
         
-        {/* Find Nearby Restaurants Button */}
-        <div className="mt-4">
-          <Link
-            to="/nearby"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-lg hover:shadow-xl"
-          >
-            <MapPin size={18} />
-            <span className="font-medium">Find Nearby Restaurants</span>
-          </Link>
-        </div>
       </div>
+
+      {/* Nearby Restaurants Header */}
+      {showingNearby && userLocation && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <MapPin className="text-primary" size={24} />
+            Nearby Restaurants
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Restaurants that deliver to your location ({restaurants.length} found)
+          </p>
+        </div>
+      )}
 
       {/* Restaurant Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -299,7 +332,16 @@ export default function Home() {
                   </span>
                 </div>
                 
-                {restaurant.isDeliveryAvailable && (
+                {showingNearby && restaurant.distanceKm && (
+                  <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 transition-colors">
+                    <MapPin size={14} className="sm:w-4 sm:h-4" />
+                    <span className="whitespace-nowrap font-medium">
+                      {convertNumerals(restaurant.distanceKm, i18n.language)} km
+                    </span>
+                  </div>
+                )}
+                
+                {restaurant.isDeliveryAvailable && !showingNearby && (
                   <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
                     <MapPin size={14} className="sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Delivery</span>
@@ -311,9 +353,20 @@ export default function Home() {
         ))}
       </div>
 
-      {restaurants.length === 0 && (
+      {restaurants.length === 0 && !loading && (
         <div className="text-center py-12">
-          <p className="text-gray-500 dark:text-gray-400 text-lg transition-colors">No restaurants found. Try a different search.</p>
+          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MapPin className="text-gray-400" size={24} />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            {showingNearby ? 'No nearby restaurants' : 'No restaurants found'}
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            {showingNearby 
+              ? 'Sorry, there are no restaurants that deliver to your area.' 
+              : 'Try a different search or check your location settings.'
+            }
+          </p>
         </div>
       )}
       </div>
