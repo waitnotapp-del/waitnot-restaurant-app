@@ -21,17 +21,30 @@ export default function Home() {
   const [locationError, setLocationError] = useState(null);
   const [isLocationBased, setIsLocationBased] = useState(false);
   const [nearbyCount, setNearbyCount] = useState(0);
+  const [showLocationStatus, setShowLocationStatus] = useState(false);
 
   useEffect(() => {
     // Try to detect location automatically on page load
     detectLocationAutomatically();
   }, []);
 
+  // Auto-hide location status after 5 seconds
+  useEffect(() => {
+    if (userLocation && showLocationStatus) {
+      const timer = setTimeout(() => {
+        setShowLocationStatus(false);
+      }, 5000); // Hide after 5 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [userLocation, showLocationStatus]);
+
   const detectLocationAutomatically = async () => {
     try {
       setLocationLoading(true);
       const location = await getUserLocation();
       setUserLocation(location);
+      setShowLocationStatus(true); // Show status indicator
       
       // Save location data to database
       await saveLocationData(location.latitude, location.longitude);
@@ -149,6 +162,7 @@ export default function Home() {
     try {
       const location = await getUserLocation();
       setUserLocation(location);
+      setShowLocationStatus(true); // Show status indicator
       
       // Save location data to database
       await saveLocationData(location.latitude, location.longitude);
@@ -326,14 +340,25 @@ export default function Home() {
           </button>
         </div>
         
-        {/* Location Status */}
-        {userLocation && (
-          <div className="mt-3">
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
-              <MapPin size={16} className="text-green-600 dark:text-green-400" />
-              <span className="text-sm text-green-700 dark:text-green-300">
-                Location detected • Delivery zones available
-              </span>
+        {/* Location Status - Auto-hide after 5 seconds */}
+        {userLocation && showLocationStatus && (
+          <div className="mt-3 animate-fade-in">
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between shadow-sm transition-all duration-300">
+              <div className="flex items-center gap-2">
+                <MapPin size={16} className="text-green-600 dark:text-green-400" />
+                <span className="text-sm text-green-700 dark:text-green-300">
+                  Location detected • Delivery zones available
+                </span>
+              </div>
+              <button
+                onClick={() => setShowLocationStatus(false)}
+                className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors p-1 rounded hover:bg-green-100 dark:hover:bg-green-800/30"
+                title="Hide notification"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
