@@ -1965,15 +1965,26 @@ export default function RestaurantDashboard() {
             onSave={async (locationData) => {
               try {
                 const token = localStorage.getItem('restaurantToken');
+                const restaurantId = restaurant._id;
+                
+                console.log('Saving location for restaurant:', restaurantId);
+                console.log('Location data:', locationData);
+                console.log('API URL:', `/api/restaurants/${restaurantId}/location-settings`);
+                
                 const response = await axios.patch(
-                  `/api/restaurants/${restaurant._id}/location-settings`,
+                  `/api/restaurants/${restaurantId}/location-settings`,
                   locationData,
                   { headers: { Authorization: `Bearer ${token}` } }
                 );
+                
+                console.log('Location save response:', response.data);
                 setRestaurant(response.data);
                 // Location settings saved - success will be shown in the component UI
               } catch (error) {
                 console.error('Error saving location:', error);
+                console.error('Error details:', error.response?.data);
+                console.error('Status:', error.response?.status);
+                console.error('Restaurant ID:', restaurant._id);
                 throw error;
               }
             }}
