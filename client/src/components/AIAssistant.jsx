@@ -78,6 +78,24 @@ export default function AIAssistant() {
     { id: 3, text: "Quick delivery options", icon: Clock },
     { id: 4, text: "Best rated items", icon: Zap }
   ]);
+  
+  // Ordering flow states
+  const [orderingFlow, setOrderingFlow] = useState({
+    isActive: false,
+    step: null, // 'item_selection', 'dietary_preference', 'quantity', 'confirmation', 'address'
+    selectedItem: null,
+    selectedRestaurant: null,
+    quantity: 1,
+    dietaryPreference: null,
+    userLocation: null,
+    orderDetails: {}
+  });
+  const [currentOrder, setCurrentOrder] = useState({
+    items: [],
+    restaurant: null,
+    totalAmount: 0,
+    deliveryAddress: null
+  });
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const wakeWordRecognitionRef = useRef(null);
@@ -434,8 +452,145 @@ export default function AIAssistant() {
     }, 800);
   };
 
+  // Handle ordering flow conversations
+  const handleOrderingFlow = async (message, lowerMessage) => {
+    const { step, selectedItem, selectedRestaurant, quantity } = orderingFlow;
+
+    switch (step) {
+      case 'dietary_preference':
+        if (lowerMessage.includes('veg') || lowerMessage.includes('vegetarian')) {
+          setOrderingFlow(prev => ({ ...prev, dietaryPreference: 'vegetarian', step: 'quantity' }));
+          return `Great choice! 🥗 How many ${selectedItem.name} would you like to order?\n\nJust say the number (e.g., "2" or "three").`;
+        } else if (lowerMessage.includes('non-veg') || lowerMessage.includes('chicken') || lowerMessage.includes('meat')) {
+          setOrderingFlow(prev => ({ ...prev, dietaryPreference: 'non-vegetarian', step: 'quantity' }));
+          return `Perfect! 🍖 How many ${selectedItem.name} would you like to order?\n\nJust say the number (e.g., "2" or "three").`;
+        } else {
+          return `I need to know your dietary preference for ${selectedItem.name}:\n\n🥗 Say "vegetarian" or "veg"\n🍖 Say "non-vegetarian" or "non-veg"\n\nWhich would you prefer?`;
+        }
+
+      case 'quantity':
+        const quantityMatch = message.match(/(\d+|one|two|three|four|five|six|seven|eight|nine|ten)/i);
+        if (quantityMatch) {
+          const numberWords = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+          const qty = isNaN(quantityMatch[1]) ? numberWords[quantityMatch[1].toLowerCase()] : parseInt(quantityMatch[1]);
+          
+          if (qty && qty > 0 && qty <= 10) {
+            const totalPrice = selectedItem.price * qty;
+            setOrderingFlow(prev => ({ ...prev, quantity: qty, step: 'confirmation' }));
+            
+            return `Perfect! 📝 Here's your order summary:\n\n🏪 Restaurant: ${selectedRestaurant.name}\n🍽️ Item: ${selectedItem.name}\n📊 Quantity: ${qty}\n💰 Total: ₹${totalPrice}\n🕐 Delivery Time: ${selectedRestaurant.deliveryTime}\n\nShould I place this order for you? Say "yes" to confirm or "no" to cancel.`;
+          } else {
+            return `Please specify a valid quantity between 1 and 10. How many ${selectedItem.name} would you like?`;
+          }
+        } else {
+          return `I didn't catch the quantity. How many ${selectedItem.name} would you like to order? (1-10)`;
+        }
+
+      case 'confirmation':
+        if (lowerMessage.includes('yes') || lowerMessage.includes('confirm') || lowerMessage.includes('place order')) {
+          return await placeOrder();
+        } else if (lowerMessage.includes('no') || lowerMessage.includes('cancel')) {
+          setOrderingFlow({ isActive: false, step: null, selectedItem: null, selectedRestaurant: null, quantity: 1, dietaryPreference: null, userLocation: null, orderDetails: {} });
+          return `No problem! 😊 Your order has been cancelled. Is there anything else I can help you with?`;
+        } else {
+          return `Please confirm your order:\n\n✅ Say "yes" or "confirm" to place the order\n❌ Say "no" or "cancel" to cancel\n\nWhat would you like to do?`;
+        }
+
+      default:
+        setOrderingFlow({ isActive: false, step: null, selectedItem: null, selectedRestaurant: null, quantity: 1, dietaryPreference: null, userLocation: null, orderDetails: {} });
+        return "Let me help you with something else. What would you like to know?";
+    }
+  };
+
+  // Place order function
+  const placeOrder = async () => {
+    try {
+      const { selectedItem, selectedRestaurant, quantity, dietaryPreference } = orderingFlow;
+      const totalAmount = selectedItem.price * quantity;
+
+      // Get user location for delivery
+      if (navigator.geolocation) {
+        return new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const { latitude, longitude } = position.coords;
+              
+              try {
+                // Create order
+                const orderData = {
+                  restaurantId: selectedRestaurant._id,
+                  items: [{
+                    itemId: selectedItem._id,
+                    name: selectedItem.name,
+                    price: selectedItem.price,
+                    quantity: quantity,
+                    dietaryPreference: dietaryPreference
+                  }],
+                  totalAmount: totalAmount,
+                  deliveryAddress: {
+                    latitude,
+                    longitude,
+                    address: "Current Location" // You can enhance this with reverse geocoding
+                  },
+                  orderType: 'delivery',
+                  paymentMethod: 'cash_on_delivery'
+                };
+
+                // Here you would typically send to your order API
+                // const response = await axios.post('/api/orders', orderData);
+                
+                // For now, simulate successful order
+                setCurrentOrder({
+                  items: orderData.items,
+                  restaurant: selectedRestaurant,
+                  totalAmount: totalAmount,
+                  deliveryAddress: orderData.deliveryAddress
+                });
+
+                // Reset ordering flow
+                setOrderingFlow({ isActive: false, step: null, selectedItem: null, selectedRestaurant: null, quantity: 1, dietaryPreference: null, userLocation: null, orderDetails: {} });
+
+                resolve(`🎉 Order placed successfully!\n\n📋 Order Details:\n🏪 ${selectedRestaurant.name}\n🍽️ ${quantity}x ${selectedItem.name}\n💰 Total: ₹${totalAmount}\n🚚 Delivery: ${selectedRestaurant.deliveryTime}\n📍 To your current location\n\n📱 You'll receive updates on your order status. Thank you for using our service!`);
+              } catch (error) {
+                resolve(`❌ Sorry, there was an issue placing your order. Please try again or contact support.`);
+              }
+            },
+            () => {
+              resolve(`📍 I need your location to complete the delivery. Please allow location access and try again.`);
+            }
+          );
+        });
+      } else {
+        return `📍 Location services are not available. Please ensure location is enabled and try again.`;
+      }
+    } catch (error) {
+      return `❌ Sorry, there was an issue placing your order. Please try again.`;
+    }
+  };
+
+  // Start ordering flow for a specific item
+  const startOrderingFlow = (item, restaurant) => {
+    setOrderingFlow({
+      isActive: true,
+      step: 'dietary_preference',
+      selectedItem: item,
+      selectedRestaurant: restaurant,
+      quantity: 1,
+      dietaryPreference: null,
+      userLocation: null,
+      orderDetails: {}
+    });
+
+    return `Great choice! 🍽️ I'd love to help you order ${item.name} from ${restaurant.name}.\n\n${item.description ? `📝 ${item.description}\n` : ''}💰 Price: ₹${item.price}\n⭐ Rating: ${item.rating || 'N/A'}/5\n\nFirst, do you prefer:\n🥗 Vegetarian\n🍖 Non-vegetarian\n\nWhich option would you like?`;
+  };
+
   const getAIResponse = async (message) => {
     const lowerMessage = message.toLowerCase();
+
+    // Handle ordering flow if active
+    if (orderingFlow.isActive) {
+      return handleOrderingFlow(message, lowerMessage);
+    }
 
     // Check for location-based queries first
     if (lowerMessage.includes('nearby') || lowerMessage.includes('near me') || lowerMessage.includes('close')) {
@@ -729,16 +884,81 @@ export default function AIAssistant() {
           }
         }
         
-        response += `\nWould you like to see full menus or order from any of these restaurants?`;
+        // Check for ordering intent
+        const orderingKeywords = ['order', 'buy', 'get', 'want', 'need', 'craving', 'hungry for'];
+        const hasOrderingIntent = orderingKeywords.some(keyword => lowerMessage.includes(keyword));
+        
+        if (hasOrderingIntent && allMatchingItems.length > 0) {
+          // Get user location and find nearest restaurant with the best item
+          if (navigator.geolocation) {
+            return new Promise((resolve) => {
+              navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                  const { latitude, longitude } = position.coords;
+                  
+                  // Find the best item from nearest restaurants
+                  const bestItem = allMatchingItems
+                    .filter(item => item.rating && item.rating >= 4)
+                    .sort((a, b) => b.rating - a.rating)[0];
+                  
+                  if (bestItem) {
+                    const restaurant = relevantRestaurants.find(r => r._id === bestItem.restaurantId);
+                    const orderResponse = startOrderingFlow(bestItem, restaurant);
+                    resolve(orderResponse);
+                  } else {
+                    resolve(response + `\n\n🛒 To place an order, just tell me which item you'd like!`);
+                  }
+                },
+                () => {
+                  resolve(response + `\n\n🛒 To place an order, just tell me which item you'd like!`);
+                }
+              );
+            });
+          }
+        }
+        
+        response += `\n\n🛒 Ready to order? Just say "I want [item name]" and I'll help you place the order!\n\nOr would you like to see full menus first?`;
         return response;
       } else {
         return `🔍 I couldn't find any ${searchedFood} items in our current restaurants. Try browsing all restaurants or search for similar items like:\n\n• Pizza → Italian cuisine\n• Biryani → Indian cuisine\n• Noodles → Chinese cuisine\n• Burgers → Fast food\n\nWhat else can I help you find?`;
       }
     }
 
+    // Detect specific item ordering intent
+    const orderingPhrases = ['i want', 'i need', 'order', 'get me', 'buy', 'i\'ll have', 'can i get'];
+    const hasSpecificOrderIntent = orderingPhrases.some(phrase => lowerMessage.includes(phrase));
+    
+    if (hasSpecificOrderIntent) {
+      // Try to find specific item mentioned
+      const allItems = [];
+      restaurants.forEach(restaurant => {
+        restaurant.menu?.forEach(item => {
+          allItems.push({
+            ...item,
+            restaurant: restaurant,
+            restaurantName: restaurant.name,
+            restaurantId: restaurant._id
+          });
+        });
+      });
+      
+      // Find item that matches the message
+      const matchedItem = allItems.find(item => {
+        const itemName = item.name.toLowerCase();
+        const words = lowerMessage.split(' ');
+        return words.some(word => itemName.includes(word) && word.length > 3);
+      });
+      
+      if (matchedItem) {
+        return startOrderingFlow(matchedItem, matchedItem.restaurant);
+      } else {
+        return "🍽️ I'd love to help you order! Could you be more specific about what you'd like? For example:\n\n• 'I want pizza'\n• 'Order chicken biryani'\n• 'Get me a burger'\n\nWhat would you like to eat?";
+      }
+    }
+
     // Food recommendations
     if (lowerMessage.includes('food') || lowerMessage.includes('eat') || lowerMessage.includes('hungry')) {
-      return "🍽️ Great! Let me help you find something delicious.\n\nPopular choices:\n• Biryani - Aromatic and flavorful\n• Pizza - Classic favorite\n• Burgers - Quick and satisfying\n• Chinese - Variety of options\n• Indian - Rich and spicy\n\nWhat sounds good to you?";
+      return "🍽️ Great! Let me help you find something delicious.\n\nPopular choices:\n• Biryani - Aromatic and flavorful\n• Pizza - Classic favorite\n• Burgers - Quick and satisfying\n• Chinese - Variety of options\n• Indian - Rich and spicy\n\nWhat sounds good to you? Just say 'I want [food name]' to start ordering!";
     }
 
     // Best/Top rated items
