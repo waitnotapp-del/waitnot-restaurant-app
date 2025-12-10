@@ -8,7 +8,7 @@ import { getUserLocation } from '../utils/geolocation';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
-import AddressDisplay from '../components/AddressDisplay';
+
 
 export default function Home() {
   const { t, i18n } = useTranslation();
