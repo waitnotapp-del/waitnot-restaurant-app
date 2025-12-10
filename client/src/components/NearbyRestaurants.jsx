@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { MapPin, Loader, AlertCircle, Navigation, Star, Clock } from 'lucide-react';
+import { MapPin, Loader, AlertCircle, Navigation, Star, Clock, History } from 'lucide-react';
 import axios from 'axios';
+import SavedLocations from './SavedLocations';
 
 export default function NearbyRestaurants() {
   const [nearbyRestaurants, setNearbyRestaurants] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [showSavedLocations, setShowSavedLocations] = useState(false);
 
   const detectLocation = () => {
     if (!navigator.geolocation) {
@@ -36,8 +38,39 @@ export default function NearbyRestaurants() {
     );
   };
 
+  const saveLocationData = async (latitude, longitude, address = null) => {
+    try {
+      // Get user data if available
+      const userData = localStorage.getItem('user');
+      const userId = userData ? JSON.parse(userData)._id : null;
+      
+      // Generate session ID if not exists
+      let sessionId = localStorage.getItem('sessionId');
+      if (!sessionId) {
+        sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        localStorage.setItem('sessionId', sessionId);
+      }
+      
+      await axios.post('/api/locations/save', {
+        latitude,
+        longitude,
+        address,
+        userId,
+        sessionId
+      });
+      
+      console.log('Location data saved successfully');
+    } catch (error) {
+      console.error('Error saving location data:', error);
+      // Don't show error to user as this is background operation
+    }
+  };
+
   const fetchNearbyRestaurants = async (latitude, longitude) => {
     try {
+      // Save location data to database
+      await saveLocationData(latitude, longitude);
+      
       const response = await axios.post('/api/restaurants/nearby', {
         latitude,
         longitude
@@ -57,6 +90,12 @@ export default function NearbyRestaurants() {
     window.location.href = `/restaurant/${restaurantId}`;
   };
 
+  const handleSavedLocationSelect = (location) => {
+    setUserLocation(location);
+    setShowSavedLocations(false);
+    fetchNearbyRestaurants(location.latitude, location.longitude);
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
@@ -67,23 +106,33 @@ export default function NearbyRestaurants() {
           Discover restaurants that deliver to your location
         </p>
         
-        <button
-          onClick={detectLocation}
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <>
-              <Loader className="animate-spin" size={20} />
-              Detecting Location...
-            </>
-          ) : (
-            <>
-              <Navigation size={20} />
-              Detect My Location
-            </>
-          )}
-        </button>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={detectLocation}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <>
+                <Loader className="animate-spin" size={20} />
+                Detecting Location...
+              </>
+            ) : (
+              <>
+                <Navigation size={20} />
+                Detect My Location
+              </>
+            )}
+          </button>
+          
+          <button
+            onClick={() => setShowSavedLocations(!showSavedLocations)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            <History size={20} />
+            Saved Locations
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -96,12 +145,20 @@ export default function NearbyRestaurants() {
         </div>
       )}
 
+      {showSavedLocations && (
+        <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <SavedLocations onLocationSelect={handleSavedLocationSelect} />
+        </div>
+      )}
+
       {userLocation && (
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
             <MapPin size={16} />
             <span className="font-medium">Your Location:</span>
-            <span>{userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}</span>
+            <span>
+              {userLocation.address || `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`}
+            </span>
           </div>
         </div>
       )}

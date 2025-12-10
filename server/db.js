@@ -11,7 +11,7 @@ export async function initDB() {
   try {
     await fs.mkdir(DB_PATH, { recursive: true });
     
-    const files = ['restaurants.json', 'orders.json', 'reels.json', 'users.json', 'reviews.json'];
+    const files = ['restaurants.json', 'orders.json', 'reels.json', 'users.json', 'reviews.json', 'locations.json'];
     for (const file of files) {
       const filePath = path.join(DB_PATH, file);
       try {
@@ -309,6 +309,67 @@ export const userDB = {
   }
 };
 
+
+// Location operations
+export const locationDB = {
+  async findAll() {
+    return await readData('locations.json');
+  },
+  
+  async findById(id) {
+    const locations = await readData('locations.json');
+    return locations.find(l => l._id === id);
+  },
+  
+  async findByUser(userId) {
+    const locations = await readData('locations.json');
+    return locations.filter(l => l.userId === userId)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+  
+  async findRecent(userId, limit = 5) {
+    const locations = await this.findByUser(userId);
+    return locations.slice(0, limit);
+  },
+  
+  async create(data) {
+    const locations = await readData('locations.json');
+    const newLocation = {
+      _id: generateId(),
+      ...data,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    locations.push(newLocation);
+    await writeData('locations.json', locations);
+    return newLocation;
+  },
+  
+  async update(id, data) {
+    const locations = await readData('locations.json');
+    const index = locations.findIndex(l => l._id === id);
+    if (index === -1) return null;
+    
+    locations[index] = {
+      ...locations[index],
+      ...data,
+      updatedAt: new Date().toISOString()
+    };
+    await writeData('locations.json', locations);
+    return locations[index];
+  },
+  
+  async delete(id) {
+    const locations = await readData('locations.json');
+    const index = locations.findIndex(l => l._id === id);
+    if (index === -1) return null;
+    
+    const deleted = locations[index];
+    locations.splice(index, 1);
+    await writeData('locations.json', locations);
+    return deleted;
+  }
+};
 
 // Review operations
 export const reviewDB = {

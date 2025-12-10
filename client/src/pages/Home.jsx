@@ -56,6 +56,34 @@ export default function Home() {
     }
   };
 
+  const saveLocationData = async (latitude, longitude, address = null) => {
+    try {
+      // Get user data if available
+      const userData = localStorage.getItem('user');
+      const userId = userData ? JSON.parse(userData)._id : null;
+      
+      // Generate session ID if not exists
+      let sessionId = localStorage.getItem('sessionId');
+      if (!sessionId) {
+        sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        localStorage.setItem('sessionId', sessionId);
+      }
+      
+      await axios.post('/api/locations/save', {
+        latitude,
+        longitude,
+        address,
+        userId,
+        sessionId
+      });
+      
+      console.log('Location data saved successfully');
+    } catch (error) {
+      console.error('Error saving location data:', error);
+      // Don't show error to user as this is background operation
+    }
+  };
+
   const handleDetectLocation = async () => {
     setLocationLoading(true);
     setLocationError(null);
@@ -63,6 +91,9 @@ export default function Home() {
     try {
       const location = await getUserLocation();
       setUserLocation(location);
+      
+      // Save location data to database
+      await saveLocationData(location.latitude, location.longitude);
       
       // Location detected - no alert needed, UI will show the address
     } catch (error) {
