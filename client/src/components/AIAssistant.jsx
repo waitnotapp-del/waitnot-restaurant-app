@@ -501,6 +501,52 @@ export default function AIAssistant() {
       return response;
     }
 
+    // Handle menu requests
+    if (lowerMessage.includes('menu') || lowerMessage.includes('show menu')) {
+      // Check if asking for specific restaurant menu
+      const restaurantMatch = restaurants.find(r => 
+        lowerMessage.includes(r.name.toLowerCase())
+      );
+      
+      if (restaurantMatch) {
+        let response = `📋 ${restaurantMatch.name} - Full Menu\n\n`;
+        response += `⭐ ${restaurantMatch.rating}/5 | 🕐 ${restaurantMatch.deliveryTime}\n\n`;
+        
+        if (restaurantMatch.menu && restaurantMatch.menu.length > 0) {
+          // Group items by category if available
+          const categories = {};
+          restaurantMatch.menu.forEach(item => {
+            const category = item.category || 'Main Items';
+            if (!categories[category]) categories[category] = [];
+            categories[category].push(item);
+          });
+          
+          Object.keys(categories).forEach(category => {
+            response += `🍽️ ${category}:\n`;
+            categories[category].slice(0, 8).forEach((item, i) => {
+              response += `${i + 1}. ${item.name} - ₹${item.price}`;
+              if (item.rating) response += ` (⭐ ${item.rating}/5)`;
+              if (item.description) response += `\n   ${item.description.substring(0, 50)}...`;
+              response += `\n`;
+            });
+            response += `\n`;
+          });
+          
+          if (restaurantMatch.menu.length > 8) {
+            response += `...and ${restaurantMatch.menu.length - 8} more items available!\n\n`;
+          }
+        } else {
+          response += `Menu not available. Please visit the restaurant page for full details.\n\n`;
+        }
+        
+        response += `Would you like to order from ${restaurantMatch.name}?`;
+        return response;
+      } else {
+        // General menu request
+        return "📋 To see a restaurant's menu, try:\n\n• 'Show [Restaurant Name] menu'\n• 'What's on the menu at [Restaurant]'\n• Or browse restaurants on the home page\n\nWhich restaurant menu would you like to see?";
+      }
+    }
+
     // Search specific restaurant
     const restaurantMatch = restaurants.find(r => 
       lowerMessage.includes(r.name.toLowerCase())
@@ -515,44 +561,137 @@ export default function AIAssistant() {
       
       if (restaurantMatch.menu && restaurantMatch.menu.length > 0) {
         response += `Popular items:\n`;
-        restaurantMatch.menu.slice(0, 3).forEach((item, i) => {
-          response += `${i + 1}. ${item.name} - ₹${item.price}\n`;
+        restaurantMatch.menu.slice(0, 5).forEach((item, i) => {
+          response += `${i + 1}. ${item.name} - ₹${item.price}`;
+          if (item.rating) response += ` (⭐ ${item.rating}/5)`;
+          response += `\n`;
         });
+        
+        if (restaurantMatch.menu.length > 5) {
+          response += `\n...and ${restaurantMatch.menu.length - 5} more items! Say 'show ${restaurantMatch.name} menu' for full menu.`;
+        }
       }
       
-      response += `\nWould you like to visit this restaurant?`;
+      response += `\n\nWould you like to see the full menu or visit this restaurant?`;
       return response;
     }
 
-    // Search for specific food items
-    if (lowerMessage.includes('pizza') || lowerMessage.includes('burger') || 
-        lowerMessage.includes('biryani') || lowerMessage.includes('pasta') ||
-        lowerMessage.includes('sandwich') || lowerMessage.includes('chicken')) {
+    // Enhanced search for specific food items with comprehensive menu exploration
+    const foodKeywords = [
+      'pizza', 'burger', 'biryani', 'pasta', 'sandwich', 'chicken', 'noodles', 
+      'rice', 'curry', 'salad', 'soup', 'dessert', 'cake', 'ice cream', 'coffee',
+      'tea', 'juice', 'paneer', 'dal', 'roti', 'naan', 'dosa', 'idli', 'samosa',
+      'momos', 'rolls', 'wrap', 'kebab', 'tikka', 'tandoor', 'fried', 'grilled',
+      'chinese', 'italian', 'indian', 'mexican', 'thai', 'continental'
+    ];
+    
+    const searchedFood = foodKeywords.find(keyword => lowerMessage.includes(keyword));
+    
+    if (searchedFood) {
+      // Find restaurants that serve this food type
+      const relevantRestaurants = [];
+      const allMatchingItems = [];
       
-      const allItems = [];
       restaurants.forEach(restaurant => {
+        let restaurantHasFood = false;
+        const restaurantItems = [];
+        
+        // Check menu items
         restaurant.menu?.forEach(item => {
-          if (item.name.toLowerCase().includes(lowerMessage.split(' ').find(word => 
-            ['pizza', 'burger', 'biryani', 'pasta', 'sandwich', 'chicken'].includes(word)
-          ))) {
-            allItems.push({
+          const itemName = item.name.toLowerCase();
+          const itemDescription = item.description?.toLowerCase() || '';
+          
+          // More comprehensive matching
+          if (itemName.includes(searchedFood) || 
+              itemDescription.includes(searchedFood) ||
+              (searchedFood === 'pizza' && (itemName.includes('margherita') || itemName.includes('pepperoni'))) ||
+              (searchedFood === 'chinese' && (itemName.includes('noodles') || itemName.includes('fried rice') || itemName.includes('manchurian'))) ||
+              (searchedFood === 'indian' && (itemName.includes('curry') || itemName.includes('dal') || itemName.includes('paneer'))) ||
+              (searchedFood === 'italian' && (itemName.includes('pasta') || itemName.includes('pizza'))) ||
+              (searchedFood === 'chicken' && itemName.includes('chicken')) ||
+              (searchedFood === 'biryani' && itemName.includes('biryani'))) {
+            
+            restaurantHasFood = true;
+            restaurantItems.push({
               ...item,
               restaurantName: restaurant.name,
-              restaurantId: restaurant._id
+              restaurantId: restaurant._id,
+              restaurantRating: restaurant.rating,
+              deliveryTime: restaurant.deliveryTime
+            });
+            
+            allMatchingItems.push({
+              ...item,
+              restaurantName: restaurant.name,
+              restaurantId: restaurant._id,
+              restaurantRating: restaurant.rating,
+              deliveryTime: restaurant.deliveryTime
             });
           }
         });
+        
+        // Check cuisine type
+        if (restaurant.cuisine?.some(c => c.toLowerCase().includes(searchedFood))) {
+          restaurantHasFood = true;
+        }
+        
+        if (restaurantHasFood) {
+          relevantRestaurants.push({
+            ...restaurant,
+            matchingItems: restaurantItems
+          });
+        }
       });
       
-      if (allItems.length > 0) {
-        let response = `🍽️ Found ${allItems.length} items:\n\n`;
-        allItems.slice(0, 5).forEach((item, i) => {
-          response += `${i + 1}. ${item.name}\n`;
-          response += `   💰 ₹${item.price} | 📍 ${item.restaurantName}\n`;
-          if (item.rating) response += `   ⭐ ${item.rating}/5\n`;
+      if (relevantRestaurants.length > 0) {
+        let response = `🍽️ Found ${searchedFood.toUpperCase()} at ${relevantRestaurants.length} restaurants:\n\n`;
+        
+        // Show restaurants with their specific items
+        relevantRestaurants.slice(0, 4).forEach((restaurant, i) => {
+          response += `${i + 1}. 🏪 ${restaurant.name}\n`;
+          response += `   ⭐ ${restaurant.rating}/5 | 🕐 ${restaurant.deliveryTime}\n`;
+          
+          if (restaurant.matchingItems.length > 0) {
+            response += `   ${searchedFood.toUpperCase()} Items:\n`;
+            restaurant.matchingItems.slice(0, 3).forEach((item, j) => {
+              response += `   • ${item.name} - ₹${item.price}`;
+              if (item.rating) response += ` (⭐ ${item.rating}/5)`;
+              response += `\n`;
+            });
+            
+            if (restaurant.matchingItems.length > 3) {
+              response += `   • ...and ${restaurant.matchingItems.length - 3} more ${searchedFood} items\n`;
+            }
+          } else {
+            response += `   🍴 Specializes in ${restaurant.cuisine?.join(', ')}\n`;
+          }
           response += `\n`;
         });
+        
+        if (relevantRestaurants.length > 4) {
+          response += `...and ${relevantRestaurants.length - 4} more restaurants serve ${searchedFood}!\n\n`;
+        }
+        
+        // Show top-rated items across all restaurants
+        if (allMatchingItems.length > 0) {
+          const topItems = allMatchingItems
+            .filter(item => item.rating && item.rating >= 4)
+            .sort((a, b) => b.rating - a.rating)
+            .slice(0, 3);
+          
+          if (topItems.length > 0) {
+            response += `🌟 Top-rated ${searchedFood} items:\n`;
+            topItems.forEach((item, i) => {
+              response += `${i + 1}. ${item.name} - ₹${item.price}\n`;
+              response += `   ⭐ ${item.rating}/5 | 📍 ${item.restaurantName}\n`;
+            });
+          }
+        }
+        
+        response += `\nWould you like to see full menus or order from any of these restaurants?`;
         return response;
+      } else {
+        return `🔍 I couldn't find any ${searchedFood} items in our current restaurants. Try browsing all restaurants or search for similar items like:\n\n• Pizza → Italian cuisine\n• Biryani → Indian cuisine\n• Noodles → Chinese cuisine\n• Burgers → Fast food\n\nWhat else can I help you find?`;
       }
     }
 
