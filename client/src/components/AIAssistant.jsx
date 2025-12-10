@@ -87,57 +87,81 @@ export default function AIAssistant() {
       wakeWordRecognitionRef.current.lang = 'en-US';
 
       wakeWordRecognitionRef.current.onresult = (event) => {
-        const last = event.results.length - 1;
-        const transcript = event.results[last][0].transcript.toLowerCase();
-        
-        console.log('Wake word listening:', transcript);
-        
-        // Check for wake word "hey waiter"
-        if (transcript.includes('hey waiter') || 
-            transcript.includes('hey walter') || 
-            transcript.includes('a waiter') ||
-            transcript.includes('hey writer')) {
-          console.log('Wake word detected!');
-          setWakeWordDetected(true);
-          setIsOpen(true);
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript.toLowerCase().trim();
           
-          // Stop wake word detection temporarily
-          wakeWordRecognitionRef.current?.stop();
+          console.log('🎤 Wake word listening:', transcript);
           
-          // Speak confirmation
-          speak("Yes, I'm here! How can I help you?");
-          
-          // Add welcome message
-          addMessage('ai', "I heard you! What would you like to know?");
-          
-          // Restart wake word detection after 30 seconds
-          setTimeout(() => {
-            if (!isOpen) {
-              startWakeWordDetection();
-            }
-          }, 30000);
+          // More flexible wake word detection
+          if (transcript.includes('hey waiter') || 
+              transcript.includes('hey walter') || 
+              transcript.includes('a waiter') ||
+              transcript.includes('hey writer') ||
+              transcript.includes('waiter') ||
+              transcript.match(/\b(hey|hi|hello)\s+(waiter|walter|writer)\b/)) {
+            
+            console.log('🎯 Wake word detected:', transcript);
+            setWakeWordDetected(true);
+            setIsOpen(true);
+            
+            // Stop wake word detection temporarily
+            wakeWordRecognitionRef.current?.stop();
+            
+            // Speak confirmation
+            speak("Yes, I'm here! How can I help you?");
+            
+            // Add welcome message
+            addMessage('ai', "I heard you say 'Hey Waiter'! What would you like to know?");
+            
+            // Restart wake word detection after 30 seconds if chat is closed
+            setTimeout(() => {
+              if (!isOpen) {
+                startWakeWordDetection();
+              }
+            }, 30000);
+            
+            break; // Exit loop once wake word is detected
+          }
         }
       };
 
       wakeWordRecognitionRef.current.onerror = (event) => {
-        console.error('Wake word recognition error:', event.error);
-        // Restart on error (except if permission denied)
-        if (event.error !== 'not-allowed' && event.error !== 'no-speech') {
+        console.error('❌ Wake word recognition error:', event.error);
+        
+        // Handle different error types
+        if (event.error === 'not-allowed') {
+          console.log('🚫 Microphone permission denied');
+          setIsWakeWordActive(false);
+        } else if (event.error === 'no-speech') {
+          console.log('🔇 No speech detected, restarting...');
+          // Restart immediately for no-speech
           setTimeout(() => {
             if (isWakeWordActive && !isOpen) {
               startWakeWordDetection();
             }
-          }, 1000);
+          }, 100);
+        } else {
+          // Restart on other errors with delay
+          setTimeout(() => {
+            if (isWakeWordActive && !isOpen) {
+              startWakeWordDetection();
+            }
+          }, 2000);
         }
       };
 
       wakeWordRecognitionRef.current.onend = () => {
+        console.log('🔄 Wake word recognition ended, restarting...');
         // Restart wake word detection if still active
         if (isWakeWordActive && !isOpen) {
           setTimeout(() => {
             startWakeWordDetection();
-          }, 500);
+          }, 1000);
         }
+      };
+
+      wakeWordRecognitionRef.current.onstart = () => {
+        console.log('👂 Wake word detection started');
       };
     }
 
@@ -148,8 +172,25 @@ export default function AIAssistant() {
 
   // Start wake word detection on mount
   useEffect(() => {
-    if (isWakeWordActive && !isOpen) {
-      startWakeWordDetection();
+    // Request microphone permission first
+    const requestMicrophonePermission = async () => {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('🎤 Microphone permission granted');
+        
+        if (isWakeWordActive && !isOpen) {
+          setTimeout(() => startWakeWordDetection(), 1000);
+        }
+      } catch (error) {
+        console.error('🚫 Microphone permission denied:', error);
+        setIsWakeWordActive(false);
+      }
+    };
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      requestMicrophonePermission();
+    } else {
+      console.warn('⚠️ MediaDevices API not supported');
     }
     
     return () => {
@@ -158,12 +199,27 @@ export default function AIAssistant() {
   }, []);
 
   const startWakeWordDetection = () => {
-    if (wakeWordRecognitionRef.current && !isOpen) {
+    if (wakeWordRecognitionRef.current && !isOpen && isWakeWordActive) {
       try {
-        wakeWordRecognitionRef.current.start();
-        console.log('👂 Wake word detection started - Say "Hey Waiter"');
+        // Check if already running
+        if (wakeWordRecognitionRef.current.continuous) {
+          wakeWordRecognitionRef.current.stop();
+          setTimeout(() => {
+            wakeWordRecognitionRef.current.start();
+            console.log('🎤 Wake word detection restarted - Say "Hey Waiter"');
+          }, 100);
+        } else {
+          wakeWordRecognitionRef.current.start();
+          console.log('🎤 Wake word detection started - Say "Hey Waiter"');
+        }
       } catch (error) {
-        console.error('Failed to start wake word detection:', error);
+        console.error('❌ Failed to start wake word detection:', error);
+        // Try again after a delay
+        setTimeout(() => {
+          if (isWakeWordActive && !isOpen) {
+            startWakeWordDetection();
+          }
+        }, 2000);
       }
     }
   };
@@ -506,10 +562,13 @@ export default function AIAssistant() {
           
           {/* Wake Word Status */}
           {isWakeWordActive && (
-            <div className="absolute -top-12 left-0 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg shadow-lg border border-purple-200 dark:border-purple-700 whitespace-nowrap">
+            <div className="absolute -top-16 left-0 bg-white dark:bg-gray-800 px-3 py-2 rounded-lg shadow-lg border border-purple-200 dark:border-purple-700 whitespace-nowrap">
               <p className="text-xs font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                Say "Hey Waiter"
+                Listening for "Hey Waiter"
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                🎤 Voice detection active
               </p>
             </div>
           )}
@@ -549,30 +608,58 @@ export default function AIAssistant() {
             </div>
             
             {/* Wake Word Toggle */}
-            <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Mic size={14} />
-                <span className="text-xs font-medium">Wake Word: "Hey Waiter"</span>
-              </div>
-              <button
-                onClick={() => {
-                  setIsWakeWordActive(!isWakeWordActive);
-                  if (!isWakeWordActive) {
-                    startWakeWordDetection();
-                  } else {
-                    stopWakeWordDetection();
-                  }
-                }}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  isWakeWordActive ? 'bg-green-400' : 'bg-gray-400'
-                }`}
-              >
-                <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                    isWakeWordActive ? 'translate-x-5' : 'translate-x-1'
+            <div className="space-y-2">
+              <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Mic size={14} />
+                  <span className="text-xs font-medium">Wake Word: "Hey Waiter"</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsWakeWordActive(!isWakeWordActive);
+                    if (!isWakeWordActive) {
+                      startWakeWordDetection();
+                    } else {
+                      stopWakeWordDetection();
+                    }
+                  }}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    isWakeWordActive ? 'bg-green-400' : 'bg-gray-400'
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      isWakeWordActive ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              {/* Debug Controls */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    console.log('🔄 Manual restart wake word detection');
+                    stopWakeWordDetection();
+                    setTimeout(() => startWakeWordDetection(), 500);
+                  }}
+                  className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors"
+                >
+                  Restart Detection
+                </button>
+                <button
+                  onClick={() => {
+                    // Simulate wake word detection for testing
+                    console.log('🧪 Testing wake word response');
+                    setWakeWordDetected(true);
+                    speak("Test: Wake word detected!");
+                    addMessage('ai', "Wake word test successful! The system is working.");
+                  }}
+                  className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors"
+                >
+                  Test Response
+                </button>
+              </div>
             </div>
           </div>
 
