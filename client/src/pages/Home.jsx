@@ -8,6 +8,7 @@ import { getUserLocation } from '../utils/geolocation';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
+import LocationDebugger from '../components/LocationDebugger';
 
 
 export default function Home() {
@@ -49,11 +50,11 @@ export default function Home() {
       
       setUserLocation(location);
       
-      // Show success message for 4 seconds
+      // Show success message with accuracy info for 5 seconds
       setShowLocationSuccess(true);
       setTimeout(() => {
         setShowLocationSuccess(false);
-      }, 4000);
+      }, 5000);
       
       // Fetch nearby restaurants immediately (parallel with success message)
       console.log('🔍 Searching for nearby restaurants...');
@@ -293,15 +294,21 @@ export default function Home() {
           </button>
         </div>
         
-        {/* Location Success Message - Shows for 4 seconds */}
-        {showLocationSuccess && (
+        {/* Location Success Message - Shows for 5 seconds */}
+        {showLocationSuccess && userLocation && (
           <div className="mt-3">
             <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg animate-fade-in">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-1">
                 <MapPin size={16} className="text-green-600 dark:text-green-400" />
                 <span className="text-sm font-medium text-green-700 dark:text-green-300">
                   Location detected • Delivery zones available
                 </span>
+              </div>
+              <div className="text-xs text-green-600 dark:text-green-400 ml-5">
+                📍 {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+                {userLocation.accuracy && (
+                  <span className="ml-2">• Accuracy: {userLocation.accuracy}m</span>
+                )}
               </div>
             </div>
           </div>
@@ -319,6 +326,20 @@ export default function Home() {
       </div>
 
 
+
+      {/* Location Debugger - Temporary for testing */}
+      <div className="mb-6">
+        <LocationDebugger 
+          onLocationUpdate={(location) => {
+            console.log('🔧 Debug location update:', location);
+            setUserLocation(location);
+            if (location.latitude && location.longitude) {
+              fetchNearbyRestaurants(location.latitude, location.longitude);
+              setShowingNearby(true);
+            }
+          }}
+        />
+      </div>
 
       {/* Nearby Restaurants Header */}
       {showingNearby && userLocation && (
