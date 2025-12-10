@@ -96,15 +96,7 @@ export default function NearbyRestaurants() {
         </div>
       )}
 
-      {userLocation && (
-        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
-            <MapPin size={16} />
-            <span className="font-medium">Your Location:</span>
-            <span>{userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}</span>
-          </div>
-        </div>
-      )}
+
 
       {nearbyRestaurants.length === 0 && userLocation && !loading && (
         <div className="text-center py-12">

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { MapPin, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { checkDeliveryAvailability } from '../utils/geolocation';
 import { reverseGeocode } from '../utils/geocoding';
-import AddressDisplay from './AddressDisplay';
+
 
 export default function DeliveryZoneChecker({ restaurant, onZoneCheck }) {
   const [checking, setChecking] = useState(false);
@@ -133,17 +133,7 @@ export default function DeliveryZoneChecker({ restaurant, onZoneCheck }) {
             </div>
           )}
 
-          {/* User Location Address Display */}
-          {userLocation && (
-            <div className="mt-4">
-              <AddressDisplay
-                latitude={userLocation.latitude}
-                longitude={userLocation.longitude}
-                showFullAddress={false}
-                className="border-t border-gray-200 dark:border-gray-700 pt-4"
-              />
-            </div>
-          )}
+
         </div>
       </div>
     </div>
