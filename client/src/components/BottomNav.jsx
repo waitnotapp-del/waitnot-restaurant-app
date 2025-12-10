@@ -28,12 +28,6 @@ export default function BottomNav() {
       show: true
     },
     {
-      path: '/nearby',
-      icon: MapPin,
-      label: 'Nearby',
-      show: true
-    },
-    {
       path: '/checkout',
       icon: ShoppingCart,
       label: 'Cart',

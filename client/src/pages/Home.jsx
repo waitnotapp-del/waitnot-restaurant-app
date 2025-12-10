@@ -20,24 +20,50 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
+  const [isLocationBased, setIsLocationBased] = useState(false);
+  const [nearbyCount, setNearbyCount] = useState(0);
 
   useEffect(() => {
-    // Load all restaurants on initial mount
-    fetchRestaurants();
+    // Try to detect location automatically on page load
+    detectLocationAutomatically();
   }, []);
+
+  const detectLocationAutomatically = async () => {
+    try {
+      setLocationLoading(true);
+      const location = await getUserLocation();
+      setUserLocation(location);
+      
+      // Save location data to database
+      await saveLocationData(location.latitude, location.longitude);
+      
+      // Fetch nearby restaurants automatically
+      await fetchNearbyRestaurants(location.latitude, location.longitude);
+      
+      console.log('Location detected automatically:', location);
+    } catch (error) {
+      console.log('Auto location detection failed, loading all restaurants:', error);
+      // If location detection fails, load all restaurants
+      fetchRestaurants();
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   const fetchRestaurants = async (query = '') => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching restaurants...');
+      setIsLocationBased(false);
+      console.log('Fetching all restaurants...');
       
       const params = {};
       if (query) params.q = query;
       
       const { data } = await axios.get('/api/restaurants/search', { params });
-      console.log('Restaurants fetched:', data.length);
+      console.log('All restaurants fetched:', data.length);
       setRestaurants(data);
+      setNearbyCount(0);
     } catch (error) {
       console.error('Error fetching restaurants:', error);
       setError(error.message || 'Failed to load restaurants');
@@ -46,8 +72,41 @@ export default function Home() {
     }
   };
 
+  const fetchNearbyRestaurants = async (latitude, longitude) => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching nearby restaurants...');
+      
+      const response = await axios.post('/api/restaurants/nearby', {
+        latitude,
+        longitude
+      });
+
+      setRestaurants(response.data.nearbyRestaurants);
+      setNearbyCount(response.data.nearbyRestaurants.length);
+      setIsLocationBased(true);
+      console.log('Nearby restaurants fetched:', response.data.nearbyRestaurants.length);
+    } catch (error) {
+      console.error('Error fetching nearby restaurants:', error);
+      // Fallback to all restaurants if nearby fetch fails
+      fetchRestaurants();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSearch = () => {
-    fetchRestaurants(searchQuery);
+    if (searchQuery.trim()) {
+      // If searching, show all restaurants matching the query
+      fetchRestaurants(searchQuery);
+    } else if (userLocation) {
+      // If no search query but have location, show nearby restaurants
+      fetchNearbyRestaurants(userLocation.latitude, userLocation.longitude);
+    } else {
+      // No search and no location, show all restaurants
+      fetchRestaurants();
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -95,11 +154,12 @@ export default function Home() {
       // Save location data to database
       await saveLocationData(location.latitude, location.longitude);
       
-      // Location detected - no alert needed, UI will show the address
+      // Fetch nearby restaurants when location is manually detected
+      await fetchNearbyRestaurants(location.latitude, location.longitude);
+      
     } catch (error) {
       console.error('Location error:', error);
       setLocationError(error.message || 'Failed to get location');
-      // Error will be shown in the UI via locationError state
     } finally {
       setLocationLoading(false);
     }
@@ -193,9 +253,25 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       {/* Search Section */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-4 sm:mb-6 transition-colors">
-          {t('discover')}
-        </h1>
+        <div className="mb-4 sm:mb-6">
+          {isLocationBased ? (
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-2 transition-colors">
+                Nearby Restaurants
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                {nearbyCount > 0 
+                  ? `Found ${nearbyCount} restaurant${nearbyCount !== 1 ? 's' : ''} that deliver to your location`
+                  : 'No restaurants found in your delivery area'
+                }
+              </p>
+            </div>
+          ) : (
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white transition-colors">
+              {t('discover')}
+            </h1>
+          )}
+        </div>
         
         <div className="flex gap-2">
           <div className="flex-1 relative">
@@ -281,16 +357,18 @@ export default function Home() {
           </div>
         )}
         
-        {/* Find Nearby Restaurants Button */}
-        <div className="mt-4">
-          <Link
-            to="/nearby"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-lg hover:shadow-xl"
-          >
-            <MapPin size={18} />
-            <span className="font-medium">Find Nearby Restaurants</span>
-          </Link>
-        </div>
+        {/* Show All Restaurants Button (when in location-based mode) */}
+        {isLocationBased && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => fetchRestaurants()}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            >
+              <Search size={16} />
+              <span>Show All Restaurants</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Restaurant Grid */}
@@ -330,7 +408,12 @@ export default function Home() {
                   </span>
                 </div>
                 
-                {restaurant.isDeliveryAvailable && (
+                {restaurant.distanceKm ? (
+                  <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 transition-colors">
+                    <MapPin size={14} className="sm:w-4 sm:h-4" />
+                    <span className="whitespace-nowrap">{restaurant.distanceKm} km</span>
+                  </div>
+                ) : restaurant.isDeliveryAvailable && (
                   <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
                     <MapPin size={14} className="sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Delivery</span>
@@ -342,9 +425,29 @@ export default function Home() {
         ))}
       </div>
 
-      {restaurants.length === 0 && (
+      {restaurants.length === 0 && !loading && (
         <div className="text-center py-12">
-          <p className="text-gray-500 dark:text-gray-400 text-lg transition-colors">No restaurants found. Try a different search.</p>
+          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MapPin className="text-gray-400" size={24} />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            {isLocationBased ? 'No nearby restaurants' : 'No restaurants found'}
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 transition-colors">
+            {isLocationBased 
+              ? 'No restaurants deliver to your current location. Try expanding your search area.'
+              : 'No restaurants found. Try a different search term.'
+            }
+          </p>
+          {isLocationBased && (
+            <button
+              onClick={() => fetchRestaurants()}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+            >
+              <Search size={16} />
+              <span>View All Restaurants</span>
+            </button>
+          )}
         </div>
       )}
       </div>
