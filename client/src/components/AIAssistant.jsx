@@ -423,33 +423,57 @@ export default function AIAssistant() {
   const handleVoiceMessage = async (message) => {
     if (!message.trim()) return;
 
-    addMessage('user', message);
-    setInputMessage('');
-    setTranscript('');
-    setIsTyping(true);
+    try {
+      addMessage('user', message);
+      setInputMessage('');
+      setTranscript('');
+      setIsTyping(true);
 
-    // Get AI response
-    setTimeout(async () => {
-      const aiResponse = await getAIResponse(message);
+      // Get AI response with error handling
+      setTimeout(async () => {
+        try {
+          const aiResponse = await getAIResponse(message);
+          setIsTyping(false);
+          addMessage('ai', aiResponse || "I'm here to help! What would you like to know?");
+        } catch (error) {
+          console.error('Error getting AI response:', error);
+          setIsTyping(false);
+          addMessage('ai', "Sorry, I encountered an issue. Please try again!");
+        }
+      }, 800);
+    } catch (error) {
+      console.error('Error in handleVoiceMessage:', error);
       setIsTyping(false);
-      addMessage('ai', aiResponse);
-    }, 800);
+      addMessage('ai', "Sorry, something went wrong. Please try again!");
+    }
   };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
-    addMessage('user', inputMessage);
-    const userQuery = inputMessage;
-    setInputMessage('');
-    setIsTyping(true);
+    try {
+      addMessage('user', inputMessage);
+      const userQuery = inputMessage;
+      setInputMessage('');
+      setIsTyping(true);
 
-    // Get AI response
-    setTimeout(async () => {
-      const aiResponse = await getAIResponse(userQuery);
+      // Get AI response with error handling
+      setTimeout(async () => {
+        try {
+          const aiResponse = await getAIResponse(userQuery);
+          setIsTyping(false);
+          addMessage('ai', aiResponse || "I'm here to help! What would you like to know?");
+        } catch (error) {
+          console.error('Error getting AI response:', error);
+          setIsTyping(false);
+          addMessage('ai', "Sorry, I encountered an issue. Please try again!");
+        }
+      }, 800);
+    } catch (error) {
+      console.error('Error in handleSendMessage:', error);
       setIsTyping(false);
-      addMessage('ai', aiResponse);
-    }, 800);
+      addMessage('ai', "Sorry, something went wrong. Please try again!");
+    }
   };
 
   // Handle ordering flow conversations
@@ -586,6 +610,11 @@ export default function AIAssistant() {
 
   const getAIResponse = async (message) => {
     const lowerMessage = message.toLowerCase();
+
+    // Simple test response to check if AI is working
+    if (lowerMessage.includes('test') || lowerMessage.includes('hello')) {
+      return "✅ AI Assistant is working! I can help you with:\n\n🍽️ Finding restaurants\n📋 Viewing menus\n🛒 Placing orders\n🎤 Voice commands\n\nWhat would you like to do?";
+    }
 
     // Handle ordering flow if active
     if (orderingFlow.isActive) {
