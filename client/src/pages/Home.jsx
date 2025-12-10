@@ -264,29 +264,9 @@ export default function Home() {
       <AIAssistant />
       
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-      {/* Search Section */}
+      {/* Search Bar Section - Moved to Top */}
       <div className="mb-6 sm:mb-8">
-        <div className="mb-4 sm:mb-6">
-          {isLocationBased ? (
-            <div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-2 transition-colors">
-                Nearby Restaurants
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                {nearbyCount > 0 
-                  ? `Found ${nearbyCount} restaurant${nearbyCount !== 1 ? 's' : ''} that deliver to your location`
-                  : 'No restaurants found in your delivery area'
-                }
-              </p>
-            </div>
-          ) : (
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white transition-colors">
-              {t('discover')}
-            </h1>
-          )}
-        </div>
-        
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-4">
           <div className="flex-1 relative">
             <input
               type="text"
@@ -370,6 +350,27 @@ export default function Home() {
               {locationError}
             </span>
           </div>
+        )}
+      </div>
+
+      {/* Page Header Section - Moved Down */}
+      <div className="mb-6 sm:mb-8">
+        {isLocationBased ? (
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-2 transition-colors">
+              Nearby Restaurants
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+              {nearbyCount > 0 
+                ? `Found ${nearbyCount} restaurant${nearbyCount !== 1 ? 's' : ''} that deliver to your location`
+                : 'No restaurants found in your delivery area'
+              }
+            </p>
+          </div>
+        ) : (
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 dark:text-white transition-colors">
+            {t('discover')}
+          </h1>
         )}
         
         {/* Show All Restaurants Button (when in location-based mode) */}
