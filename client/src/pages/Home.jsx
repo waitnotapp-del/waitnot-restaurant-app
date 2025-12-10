@@ -8,6 +8,7 @@ import { getUserLocation } from '../utils/geolocation';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
+import LocationDebugger from '../components/LocationDebugger';
 
 
 export default function Home() {
@@ -322,6 +323,20 @@ export default function Home() {
           </div>
         )}
         
+      </div>
+
+      {/* Location Debugger - Temporary for testing */}
+      <div className="mb-6">
+        <LocationDebugger 
+          onLocationUpdate={(location) => {
+            console.log('🔧 Debug location update:', location);
+            setUserLocation(location);
+            if (location.latitude && location.longitude) {
+              fetchNearbyRestaurants(location.latitude, location.longitude);
+              setShowingNearby(true);
+            }
+          }}
+        />
       </div>
 
       {/* Nearby Restaurants Header */}
