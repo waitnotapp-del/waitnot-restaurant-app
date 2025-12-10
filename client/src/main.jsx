@@ -8,7 +8,7 @@ import axios from 'axios'
 import { API_URL } from './config'
 
 // Configure axios base URL - can be overridden in Settings
-const savedApiUrl = localStorage.getItem('apiUrl') || 'https://waitnot-restaurant-app.onrender.com/api'
+const savedApiUrl = localStorage.getItem('apiUrl') || 'https://waitnot-backend-42e3.onrender.com/api'
 axios.defaults.baseURL = savedApiUrl.replace('/api', '')
 axios.defaults.timeout = 60000 // 60 seconds for video uploads
 
