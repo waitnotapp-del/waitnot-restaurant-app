@@ -1,179 +1,30 @@
 // Geolocation utilities for delivery zone checking
 
 /**
- * Get user's current location with multiple methods and enhanced accuracy
- * @returns {Promise<{latitude: number, longitude: number, accuracy: number, method: string}>}
+ * Get user's current location
+ * @returns {Promise<{latitude: number, longitude: number}>}
  */
 export function getUserLocation() {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       return reject(new Error("Geolocation is not supported by your browser"));
     }
 
-    console.log('🎯 Starting enhanced location detection...');
-    
-    // Method 1: Ultra high accuracy with GPS
-    const ultraHighAccuracyOptions = {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0 // Force fresh location
-    };
-
-    // Method 2: High accuracy with some caching
-    const highAccuracyOptions = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 30000 // 30 seconds cache
-    };
-
-    // Method 3: Network-based location (faster but less accurate)
-    const networkOptions = {
-      enableHighAccuracy: false,
-      timeout: 5000,
-      maximumAge: 60000 // 1 minute cache
-    };
-
-    const methods = [
-      { options: ultraHighAccuracyOptions, name: 'Ultra High Accuracy GPS', minAccuracy: 20 },
-      { options: highAccuracyOptions, name: 'High Accuracy GPS', minAccuracy: 50 },
-      { options: networkOptions, name: 'Network Location', minAccuracy: 1000 }
-    ];
-
-    let bestLocation = null;
-    let methodIndex = 0;
-
-    async function tryNextMethod() {
-      if (methodIndex >= methods.length) {
-        if (bestLocation) {
-          console.log('✅ Using best available location:', bestLocation);
-          resolve(bestLocation);
-        } else {
-          reject(new Error('Unable to obtain location after trying all methods'));
-        }
-        return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        resolve({ latitude, longitude });
+      },
+      (error) => {
+        reject(error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
-
-      const method = methods[methodIndex];
-      console.log(`🔍 Trying method ${methodIndex + 1}: ${method.name}`);
-
-      return new Promise((methodResolve) => {
-        const timeoutId = setTimeout(() => {
-          console.log(`⏰ Method ${methodIndex + 1} timed out`);
-          methodIndex++;
-          methodResolve();
-          tryNextMethod();
-        }, method.options.timeout);
-
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            clearTimeout(timeoutId);
-            const { latitude, longitude, accuracy, altitude, altitudeAccuracy, heading, speed } = position.coords;
-            const timestamp = new Date(position.timestamp);
-            
-            const locationData = {
-              latitude,
-              longitude,
-              accuracy: Math.round(accuracy),
-              method: method.name,
-              timestamp,
-              altitude,
-              altitudeAccuracy,
-              heading,
-              speed
-            };
-
-            console.log(`📍 Location from ${method.name}:`, {
-              coordinates: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-              accuracy: `±${Math.round(accuracy)}m`,
-              timestamp: timestamp.toLocaleTimeString(),
-              altitude: altitude ? `${Math.round(altitude)}m` : 'N/A',
-              heading: heading ? `${Math.round(heading)}°` : 'N/A',
-              speed: speed ? `${Math.round(speed * 3.6)} km/h` : 'N/A'
-            });
-
-            // Check if this location is good enough
-            if (accuracy <= method.minAccuracy) {
-              console.log(`✅ Excellent accuracy (${Math.round(accuracy)}m), using this location`);
-              resolve(locationData);
-              return;
-            }
-
-            // Store as best location if it's better than what we have
-            if (!bestLocation || accuracy < bestLocation.accuracy) {
-              bestLocation = locationData;
-              console.log(`💾 Stored as best location (${Math.round(accuracy)}m accuracy)`);
-            }
-
-            // Try next method for potentially better accuracy
-            methodIndex++;
-            methodResolve();
-            tryNextMethod();
-          },
-          (error) => {
-            clearTimeout(timeoutId);
-            console.error(`❌ Method ${methodIndex + 1} failed:`, {
-              code: error.code,
-              message: error.message,
-              method: method.name
-            });
-
-            // Try next method
-            methodIndex++;
-            methodResolve();
-            tryNextMethod();
-          },
-          method.options
-        );
-      });
-    }
-
-    // Start trying methods
-    tryNextMethod();
+    );
   });
-}
-
-/**
- * Get location with watchPosition for continuous updates
- * @param {Function} callback - Called with each location update
- * @returns {number} Watch ID for clearing the watch
- */
-export function watchUserLocation(callback) {
-  if (!navigator.geolocation) {
-    throw new Error("Geolocation is not supported by your browser");
-  }
-
-  const options = {
-    enableHighAccuracy: true,
-    timeout: 10000,
-    maximumAge: 5000
-  };
-
-  return navigator.geolocation.watchPosition(
-    (position) => {
-      const { latitude, longitude, accuracy } = position.coords;
-      callback({
-        latitude,
-        longitude,
-        accuracy: Math.round(accuracy),
-        timestamp: new Date(position.timestamp)
-      });
-    },
-    (error) => {
-      console.error('Watch location error:', error);
-      callback({ error: error.message });
-    },
-    options
-  );
-}
-
-/**
- * Clear location watch
- * @param {number} watchId - Watch ID returned by watchUserLocation
- */
-export function clearLocationWatch(watchId) {
-  if (navigator.geolocation && watchId) {
-    navigator.geolocation.clearWatch(watchId);
-  }
 }
 
 /**

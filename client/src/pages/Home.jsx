@@ -8,8 +8,7 @@ import { getUserLocation } from '../utils/geolocation';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
-import LocationDebugger from '../components/LocationDebugger';
-
+import AddressDisplay from '../components/AddressDisplay';
 
 export default function Home() {
   const { t, i18n } = useTranslation();
@@ -21,101 +20,24 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
-  const [showingNearby, setShowingNearby] = useState(false);
-  const [showLocationSuccess, setShowLocationSuccess] = useState(false);
 
   useEffect(() => {
-    // Automatically detect location and fetch nearby restaurants
-    // Add small delay to ensure component is fully mounted
-    const timer = setTimeout(() => {
-      detectLocationAndFetchNearby();
-    }, 100);
-    
-    return () => clearTimeout(timer);
+    // Load all restaurants on initial mount
+    fetchRestaurants();
   }, []);
 
-  const detectLocationAndFetchNearby = async () => {
-    setLocationLoading(true);
-    setLocationError(null);
-    
-    try {
-      console.log('🎯 Starting location detection...');
-      const location = await getUserLocation();
-      
-      console.log('✅ Location detected:', {
-        latitude: location.latitude.toFixed(6),
-        longitude: location.longitude.toFixed(6),
-        accuracy: location.accuracy ? `${location.accuracy}m` : 'Unknown'
-      });
-      
-      setUserLocation(location);
-      
-      // Show success message with accuracy info for 5 seconds
-      setShowLocationSuccess(true);
-      setTimeout(() => {
-        setShowLocationSuccess(false);
-      }, 5000);
-      
-      // Fetch nearby restaurants immediately (parallel with success message)
-      console.log('🔍 Searching for nearby restaurants...');
-      await fetchNearbyRestaurants(location.latitude, location.longitude);
-      setShowingNearby(true);
-      
-    } catch (error) {
-      console.error('❌ Location detection failed:', error);
-      setLocationError(error.message || 'Failed to get location');
-      
-      // Fallback to all restaurants if location fails
-      console.log('📍 Falling back to all restaurants...');
-      await fetchAllRestaurants();
-    } finally {
-      setLocationLoading(false);
-    }
-  };
-
-  const fetchNearbyRestaurants = async (latitude, longitude) => {
+  const fetchRestaurants = async (query = '') => {
     try {
       setLoading(true);
       setError(null);
-      
-      const startTime = performance.now();
-      console.log('🔍 Fetching nearby restaurants...');
-      
-      const { data } = await axios.post('/api/restaurants/nearby', {
-        latitude,
-        longitude
-      });
-      
-      const endTime = performance.now();
-      const loadTime = Math.round(endTime - startTime);
-      
-      console.log(`✅ Nearby restaurants loaded in ${loadTime}ms:`, {
-        found: data.nearbyRestaurants.length,
-        userLocation: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-      });
-      
-      setRestaurants(data.nearbyRestaurants);
-    } catch (error) {
-      console.error('❌ Error fetching nearby restaurants:', error);
-      setError(error.message || 'Failed to load nearby restaurants');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAllRestaurants = async (query = '') => {
-    try {
-      setLoading(true);
-      setError(null);
-      console.log('Fetching all restaurants...');
+      console.log('Fetching restaurants...');
       
       const params = {};
       if (query) params.q = query;
       
       const { data } = await axios.get('/api/restaurants/search', { params });
-      console.log('All restaurants fetched:', data.length);
+      console.log('Restaurants fetched:', data.length);
       setRestaurants(data);
-      setShowingNearby(false);
     } catch (error) {
       console.error('Error fetching restaurants:', error);
       setError(error.message || 'Failed to load restaurants');
@@ -125,7 +47,7 @@ export default function Home() {
   };
 
   const handleSearch = () => {
-    fetchAllRestaurants(searchQuery);
+    fetchRestaurants(searchQuery);
   };
 
   const handleKeyPress = (e) => {
@@ -135,7 +57,21 @@ export default function Home() {
   };
 
   const handleDetectLocation = async () => {
-    await detectLocationAndFetchNearby();
+    setLocationLoading(true);
+    setLocationError(null);
+    
+    try {
+      const location = await getUserLocation();
+      setUserLocation(location);
+      
+      // Location detected - no alert needed, UI will show the address
+    } catch (error) {
+      console.error('Location error:', error);
+      setLocationError(error.message || 'Failed to get location');
+      // Error will be shown in the UI via locationError state
+    } finally {
+      setLocationLoading(false);
+    }
   };
 
   if (loading) {
@@ -257,16 +193,10 @@ export default function Home() {
             disabled={locationLoading}
             className={`${
               userLocation 
-                ? userLocation.accuracy && userLocation.accuracy <= 50
-                  ? 'bg-green-500 hover:bg-green-600' 
-                  : 'bg-yellow-500 hover:bg-yellow-600'
+                ? 'bg-green-500 hover:bg-green-600' 
                 : 'bg-blue-500 hover:bg-blue-600'
             } text-white p-2.5 sm:p-3 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed relative`}
-            title={
-              userLocation 
-                ? `Location: ${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}${userLocation.accuracy ? ` (±${userLocation.accuracy}m)` : ''}`
-                : "Detect My Location"
-            }
+            title={userLocation ? "Location Detected" : "Detect My Location"}
           >
             {locationLoading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
@@ -274,11 +204,7 @@ export default function Home() {
               <>
                 <Navigation size={20} className={userLocation ? 'animate-pulse' : ''} />
                 {userLocation && (
-                  <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
-                    userLocation.accuracy && userLocation.accuracy <= 50 
-                      ? 'bg-green-400' 
-                      : 'bg-yellow-400'
-                  }`}></span>
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></span>
                 )}
               </>
             )}
@@ -294,23 +220,24 @@ export default function Home() {
           </button>
         </div>
         
-        {/* Location Success Message - Shows for 5 seconds */}
-        {showLocationSuccess && userLocation && (
-          <div className="mt-3">
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg animate-fade-in">
-              <div className="flex items-center gap-2 mb-1">
-                <MapPin size={16} className="text-green-600 dark:text-green-400" />
-                <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                  Location detected • Delivery zones available
-                </span>
-              </div>
-              <div className="text-xs text-green-600 dark:text-green-400 ml-5">
-                📍 {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
-                {userLocation.accuracy && (
-                  <span className="ml-2">• Accuracy: {userLocation.accuracy}m</span>
-                )}
-              </div>
+        {/* Location Status & Address */}
+        {userLocation && (
+          <div className="mt-3 space-y-3">
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+              <MapPin size={16} className="text-green-600 dark:text-green-400" />
+              <span className="text-sm text-green-700 dark:text-green-300">
+                Location detected • Delivery zones available
+              </span>
             </div>
+            
+            <AddressDisplay
+              latitude={userLocation.latitude}
+              longitude={userLocation.longitude}
+              showFullAddress={false}
+              onAddressFound={(address) => {
+                console.log('Address found:', address);
+              }}
+            />
           </div>
         )}
         
@@ -323,36 +250,17 @@ export default function Home() {
           </div>
         )}
         
-      </div>
-
-
-
-      {/* Location Debugger - Temporary for testing */}
-      <div className="mb-6">
-        <LocationDebugger 
-          onLocationUpdate={(location) => {
-            console.log('🔧 Debug location update:', location);
-            setUserLocation(location);
-            if (location.latitude && location.longitude) {
-              fetchNearbyRestaurants(location.latitude, location.longitude);
-              setShowingNearby(true);
-            }
-          }}
-        />
-      </div>
-
-      {/* Nearby Restaurants Header */}
-      {showingNearby && userLocation && (
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <MapPin className="text-primary" size={24} />
-            Nearby Restaurants
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Restaurants that deliver to your location ({restaurants.length} found)
-          </p>
+        {/* Find Nearby Restaurants Button */}
+        <div className="mt-4">
+          <Link
+            to="/nearby"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-lg hover:shadow-xl"
+          >
+            <MapPin size={18} />
+            <span className="font-medium">Find Nearby Restaurants</span>
+          </Link>
         </div>
-      )}
+      </div>
 
       {/* Restaurant Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -391,16 +299,7 @@ export default function Home() {
                   </span>
                 </div>
                 
-                {showingNearby && restaurant.distanceKm && (
-                  <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 transition-colors">
-                    <MapPin size={14} className="sm:w-4 sm:h-4" />
-                    <span className="whitespace-nowrap font-medium">
-                      {convertNumerals(restaurant.distanceKm, i18n.language)} km
-                    </span>
-                  </div>
-                )}
-                
-                {restaurant.isDeliveryAvailable && !showingNearby && (
+                {restaurant.isDeliveryAvailable && (
                   <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
                     <MapPin size={14} className="sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Delivery</span>
@@ -412,20 +311,9 @@ export default function Home() {
         ))}
       </div>
 
-      {restaurants.length === 0 && !loading && (
+      {restaurants.length === 0 && (
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MapPin className="text-gray-400" size={24} />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            {showingNearby ? 'No nearby restaurants' : 'No restaurants found'}
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            {showingNearby 
-              ? 'Sorry, there are no restaurants that deliver to your area.' 
-              : 'Try a different search or check your location settings.'
-            }
-          </p>
+          <p className="text-gray-500 dark:text-gray-400 text-lg transition-colors">No restaurants found. Try a different search.</p>
         </div>
       )}
       </div>
