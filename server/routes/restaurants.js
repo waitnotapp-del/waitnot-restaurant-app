@@ -188,6 +188,65 @@ router.patch('/:id/location-settings', async (req, res) => {
   }
 });
 
+// Get nearby restaurants based on user location
+router.post('/nearby', async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+    
+    // Import distance utility
+    const { haversineDistanceKm } = await import('../utils/distance.js');
+    
+    // Get all restaurants
+    const allRestaurants = await restaurantDB.findAll();
+    
+    // Filter and sort restaurants by distance
+    const nearbyRestaurants = allRestaurants
+      .map(restaurant => {
+        // Skip restaurants without location data
+        if (!restaurant.latitude || !restaurant.longitude || !restaurant.deliveryRadiusKm) {
+          return null;
+        }
+        
+        // Calculate distance
+        const distanceKm = haversineDistanceKm(
+          latitude,
+          longitude,
+          restaurant.latitude,
+          restaurant.longitude
+        );
+        
+        // Check if within delivery radius
+        const isWithinRadius = distanceKm <= restaurant.deliveryRadiusKm;
+        
+        if (!isWithinRadius) {
+          return null;
+        }
+        
+        // Remove password from response and add distance
+        const { password, ...restaurantData } = restaurant;
+        return {
+          ...restaurantData,
+          distanceKm: parseFloat(distanceKm.toFixed(2))
+        };
+      })
+      .filter(restaurant => restaurant !== null) // Remove null entries
+      .sort((a, b) => a.distanceKm - b.distanceKm); // Sort by distance (closest first)
+    
+    res.json({
+      nearbyRestaurants,
+      count: nearbyRestaurants.length,
+      userLocation: { latitude, longitude }
+    });
+  } catch (error) {
+    console.error('Error finding nearby restaurants:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Check delivery availability
 router.post('/:id/check-delivery', async (req, res) => {
   try {
@@ -209,21 +268,9 @@ router.post('/:id/check-delivery', async (req, res) => {
       });
     }
     
-    // Calculate distance using Haversine formula
-    const R = 6371; // Earth radius in km
-    const toRad = (value) => (value * Math.PI) / 180;
-    
-    const dLat = toRad(userLatitude - restaurant.latitude);
-    const dLon = toRad(userLongitude - restaurant.longitude);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(restaurant.latitude)) *
-        Math.cos(toRad(userLatitude)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // in km
+    // Import distance utility
+    const { haversineDistanceKm } = await import('../utils/distance.js');
+    const distance = haversineDistanceKm(userLatitude, userLongitude, restaurant.latitude, restaurant.longitude);
     
     const allowed = distance <= restaurant.deliveryRadiusKm;
     

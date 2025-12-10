@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Film, ShoppingCart, History } from 'lucide-react';
+import { Film, ShoppingCart, History, MapPin } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useState, useEffect } from 'react';
 
@@ -25,6 +25,12 @@ export default function BottomNav() {
       path: '/reels',
       icon: Film,
       label: 'Reels',
+      show: true
+    },
+    {
+      path: '/nearby',
+      icon: MapPin,
+      label: 'Nearby',
       show: true
     },
     {

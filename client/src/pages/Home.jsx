@@ -249,6 +249,17 @@ export default function Home() {
             </span>
           </div>
         )}
+        
+        {/* Find Nearby Restaurants Button */}
+        <div className="mt-4">
+          <Link
+            to="/nearby"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-lg hover:shadow-xl"
+          >
+            <MapPin size={18} />
+            <span className="font-medium">Find Nearby Restaurants</span>
+          </Link>
+        </div>
       </div>
 
       {/* Restaurant Grid */}

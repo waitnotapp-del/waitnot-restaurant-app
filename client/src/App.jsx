@@ -11,6 +11,7 @@ import QROrder from './pages/QROrder';
 import RestaurantDashboard from './pages/RestaurantDashboard';
 import RestaurantLogin from './pages/RestaurantLogin';
 import Settings from './pages/Settings';
+import NearbyRestaurants from './components/NearbyRestaurants';
 
 import UserLogin from './pages/UserLogin';
 import OrderHistory from './pages/OrderHistory';
@@ -41,6 +42,7 @@ function AppContent() {
             <Route path="/restaurant/:id" element={<><Navbar /><RestaurantPage /><BottomNav /></>} />
             <Route path="/checkout" element={<><Navbar /><Checkout /><BottomNav /></>} />
             <Route path="/reels" element={<><Reels /><BottomNav /></>} />
+            <Route path="/nearby" element={<><Navbar /><NearbyRestaurants /><BottomNav /></>} />
             <Route path="/qr/:restaurantId/:tableNumber" element={<QROrder />} />
             <Route path="/restaurant-login" element={<RestaurantLogin />} />
             <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
