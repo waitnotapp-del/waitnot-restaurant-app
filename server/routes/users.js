@@ -393,9 +393,17 @@ router.get('/debug-orders', async (req, res) => {
       console.log(`  - Order ${order._id}: ${order.customerName} (${order.customerPhone}) - ₹${order.totalAmount}`);
     });
     
+    // Check specific phone number
+    const ordersFor123456789 = allOrders.filter(o => o.customerPhone === '123456789');
+    console.log(`🔍 DEBUG: Orders for phone 123456789: ${ordersFor123456789.length}`);
+    ordersFor123456789.forEach(order => {
+      console.log(`  - ${order._id}: ${order.customerName} - ₹${order.totalAmount} - ${order.status}`);
+    });
+    
     res.json({
       users: allUsers.map(u => ({ id: u._id, name: u.name, phone: u.phone })),
-      orders: allOrders.map(o => ({ id: o._id, customerName: o.customerName, customerPhone: o.customerPhone, total: o.totalAmount }))
+      orders: allOrders.map(o => ({ id: o._id, customerName: o.customerName, customerPhone: o.customerPhone, total: o.totalAmount, status: o.status })),
+      ordersFor123456789: ordersFor123456789.map(o => ({ id: o._id, customerName: o.customerName, total: o.totalAmount, status: o.status }))
     });
   } catch (error) {
     console.error('Error in debug endpoint:', error);
@@ -428,10 +436,44 @@ router.get('/orders', async (req, res) => {
 
     // Get orders by phone number
     const { orderDB } = await import('../db.js');
+    
+    // First, let's check all orders to debug
+    const allOrders = await orderDB.findAll();
+    console.log('🔍 Total orders in database:', allOrders.length);
+    
+    // Check for exact phone match
+    const exactMatches = allOrders.filter(o => o.customerPhone === user.phone);
+    console.log('🔍 Exact phone matches for', user.phone, ':', exactMatches.length);
+    
+    // Check for similar phone matches (in case of formatting issues)
+    const similarMatches = allOrders.filter(o => 
+      o.customerPhone && (
+        o.customerPhone.includes(user.phone) || 
+        user.phone.includes(o.customerPhone) ||
+        o.customerPhone.replace(/\D/g, '') === user.phone.replace(/\D/g, '')
+      )
+    );
+    console.log('🔍 Similar phone matches:', similarMatches.length);
+    
     const orders = await orderDB.findByPhone(user.phone);
     
     console.log('📦 Orders found for phone', user.phone, ':', orders.length);
-    console.log('📋 Order details:', orders.map(o => ({ id: o._id, phone: o.customerPhone, total: o.totalAmount })));
+    console.log('📋 Order details:', orders.map(o => ({ id: o._id, phone: o.customerPhone, total: o.totalAmount, status: o.status })));
+
+    // If no orders found, let's return some debug info
+    if (orders.length === 0) {
+      console.log('⚠️ No orders found - returning debug info');
+      return res.json({
+        orders: [],
+        debug: {
+          userPhone: user.phone,
+          totalOrdersInDB: allOrders.length,
+          exactMatches: exactMatches.length,
+          similarMatches: similarMatches.length,
+          sampleOrders: allOrders.slice(0, 3).map(o => ({ phone: o.customerPhone, name: o.customerName }))
+        }
+      });
+    }
 
     res.json(orders);
   } catch (error) {
