@@ -335,29 +335,107 @@ router.put('/profile', async (req, res) => {
   }
 });
 
+// Test login endpoint for debugging
+router.post('/test-login', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    
+    console.log('🧪 Test login for phone:', phone);
+    
+    // Find user by phone
+    const user = await userDB.findByPhone(phone);
+    
+    if (!user) {
+      console.log('❌ User not found for phone:', phone);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log('✅ User found:', { id: user._id, name: user.name, phone: user.phone });
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, phone: user.phone },
+      process.env.JWT_SECRET || 'your_jwt_secret_key_here',
+      { expiresIn: '30d' }
+    );
+    
+    console.log('🔑 Token generated for user');
+    
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        phone: user.phone,
+        name: user.name
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error in test login:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Debug endpoint to check database contents
+router.get('/debug-orders', async (req, res) => {
+  try {
+    const { orderDB } = await import('../db.js');
+    const allOrders = await orderDB.findAll();
+    const allUsers = await userDB.findAll();
+    
+    console.log('🔍 DEBUG: All users in database:');
+    allUsers.forEach(user => {
+      console.log(`  - ${user.name} (${user.phone}) - ID: ${user._id}`);
+    });
+    
+    console.log('🔍 DEBUG: All orders in database:');
+    allOrders.forEach(order => {
+      console.log(`  - Order ${order._id}: ${order.customerName} (${order.customerPhone}) - ₹${order.totalAmount}`);
+    });
+    
+    res.json({
+      users: allUsers.map(u => ({ id: u._id, name: u.name, phone: u.phone })),
+      orders: allOrders.map(o => ({ id: o._id, customerName: o.customerName, customerPhone: o.customerPhone, total: o.totalAmount }))
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get user's order history
 router.get('/orders', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     
+    console.log('🔍 Orders API called with token:', token ? 'Present' : 'Missing');
+    
     if (!token) {
+      console.log('❌ No token provided');
       return res.status(401).json({ error: 'No token provided' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key_here');
+    console.log('🔓 Token decoded:', { userId: decoded.userId, phone: decoded.phone });
+    
     const user = await userDB.findById(decoded.userId);
+    console.log('👤 User found:', user ? { id: user._id, phone: user.phone, name: user.name } : 'Not found');
 
     if (!user) {
+      console.log('❌ User not found in database');
       return res.status(404).json({ error: 'User not found' });
     }
 
     // Get orders by phone number
     const { orderDB } = await import('../db.js');
     const orders = await orderDB.findByPhone(user.phone);
+    
+    console.log('📦 Orders found for phone', user.phone, ':', orders.length);
+    console.log('📋 Order details:', orders.map(o => ({ id: o._id, phone: o.customerPhone, total: o.totalAmount })));
 
     res.json(orders);
   } catch (error) {
-    console.error('Error getting orders:', error);
+    console.error('❌ Error getting orders:', error);
     res.status(401).json({ error: 'Invalid token' });
   }
 });
