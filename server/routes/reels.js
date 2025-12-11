@@ -62,13 +62,14 @@ router.post('/nearby', async (req, res) => {
     // Get all reels
     const allReels = await reelDB.findAll();
     
-    // Filter reels by restaurant delivery zones
+    // Filter reels by restaurant delivery zones - STRICT FILTERING
     const nearbyReels = allReels.filter(reel => {
       const restaurant = reel.restaurantId;
       
-      // Skip reels from restaurants without location data
+      // STRICT: Only include restaurants with complete location setup
       if (!restaurant || !restaurant.latitude || !restaurant.longitude || !restaurant.deliveryRadiusKm) {
-        return true; // Include reels from restaurants without location setup
+        console.log(`Server: Excluding reel from ${restaurant?.name || 'unknown restaurant'} - missing location data`);
+        return false; // Exclude restaurants without proper location setup
       }
       
       // Calculate distance between user and restaurant
@@ -79,8 +80,14 @@ router.post('/nearby', async (req, res) => {
         restaurant.longitude
       );
       
-      // Include reel if user is within delivery radius
-      return distanceKm <= restaurant.deliveryRadiusKm;
+      // Include reel ONLY if user is within delivery radius
+      const isWithinRange = distanceKm <= restaurant.deliveryRadiusKm;
+      
+      if (!isWithinRange) {
+        console.log(`Server: Excluding reel from ${restaurant.name} - distance ${distanceKm.toFixed(2)}km > radius ${restaurant.deliveryRadiusKm}km`);
+      }
+      
+      return isWithinRange;
     });
     
     console.log(`Location-based reel filtering: ${nearbyReels.length} out of ${allReels.length} reels are nearby`);

@@ -73,6 +73,7 @@ export default function Reels() {
       // Try to get user location
       const location = await getUserLocation();
       setUserLocation(location);
+      console.log('✅ User location detected:', location);
       
       // Save location data
       await saveLocationData(location.latitude, location.longitude);
@@ -81,7 +82,7 @@ export default function Reels() {
       await fetchAllReels();
       
     } catch (error) {
-      console.log('Location detection failed:', error);
+      console.log('❌ Location detection failed:', error);
       setLocationError(error.message);
       setShowLocationPrompt(true);
       
@@ -137,9 +138,10 @@ export default function Reels() {
     const nearbyReels = allReels.filter(reel => {
       const restaurant = reel.restaurantId;
       
-      // If restaurant doesn't have location data, include it
-      if (!restaurant.latitude || !restaurant.longitude || !restaurant.deliveryRadiusKm) {
-        return true;
+      // STRICT FILTERING: Only include restaurants with complete location setup
+      if (!restaurant || !restaurant.latitude || !restaurant.longitude || !restaurant.deliveryRadiusKm) {
+        console.log(`Excluding reel from ${restaurant?.name || 'unknown restaurant'} - missing location data`);
+        return false; // Exclude restaurants without proper location setup
       }
       
       // Calculate distance between user and restaurant
@@ -150,12 +152,54 @@ export default function Reels() {
         restaurant.longitude
       );
       
-      // Include reel if user is within delivery radius
-      return distance <= restaurant.deliveryRadiusKm;
+      // Include reel ONLY if user is within delivery radius
+      const isWithinRange = distance <= restaurant.deliveryRadiusKm;
+      
+      if (!isWithinRange) {
+        console.log(`Excluding reel from ${restaurant.name} - distance ${distance.toFixed(2)}km > radius ${restaurant.deliveryRadiusKm}km`);
+      }
+      
+      return isWithinRange;
     });
 
-    console.log(`Filtered reels: ${nearbyReels.length} out of ${allReels.length} reels are nearby`);
+    console.log(`STRICT LOCATION FILTERING: ${nearbyReels.length} out of ${allReels.length} reels are from nearby restaurants with proper location setup`);
     setReels(nearbyReels);
+  };
+
+  const analyzeRestaurantLocationData = (reels) => {
+    const restaurantStats = {
+      total: reels.length,
+      withLocation: 0,
+      withoutLocation: 0,
+      restaurants: new Set()
+    };
+
+    reels.forEach(reel => {
+      const restaurant = reel.restaurantId;
+      if (restaurant) {
+        restaurantStats.restaurants.add(restaurant._id);
+        
+        if (restaurant.latitude && restaurant.longitude && restaurant.deliveryRadiusKm) {
+          restaurantStats.withLocation++;
+        } else {
+          restaurantStats.withoutLocation++;
+          console.log(`⚠️ Restaurant "${restaurant.name}" missing location data:`, {
+            hasLatitude: !!restaurant.latitude,
+            hasLongitude: !!restaurant.longitude,
+            hasDeliveryRadius: !!restaurant.deliveryRadiusKm,
+            restaurant: restaurant
+          });
+        }
+      }
+    });
+
+    console.log('📊 Restaurant Location Analysis:', {
+      totalReels: restaurantStats.total,
+      uniqueRestaurants: restaurantStats.restaurants.size,
+      reelsWithLocation: restaurantStats.withLocation,
+      reelsWithoutLocation: restaurantStats.withoutLocation,
+      percentageWithLocation: ((restaurantStats.withLocation / restaurantStats.total) * 100).toFixed(1) + '%'
+    });
   };
 
   const handleLocationPermission = async () => {
@@ -316,6 +360,9 @@ export default function Reels() {
       })));
       
       setAllReels(data);
+      
+      // Debug: Analyze restaurant location data
+      analyzeRestaurantLocationData(data);
       
       // If we have user location, filter the reels
       if (userLocation) {
@@ -730,11 +777,21 @@ export default function Reels() {
         )}
 
         {/* Location Status Indicator */}
-        {userLocation && (
+        {userLocation && reels.length < allReels.length && (
           <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-40 bg-green-600 bg-opacity-90 text-white px-3 py-1 rounded-full text-sm backdrop-blur-sm pointer-events-none">
             <div className="flex items-center gap-1">
               <MapPin size={14} />
-              <span>Showing nearby reels</span>
+              <span>Showing {reels.length} nearby reels</span>
+            </div>
+          </div>
+        )}
+        
+        {/* All Reels Indicator */}
+        {userLocation && reels.length === allReels.length && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-40 bg-blue-600 bg-opacity-90 text-white px-3 py-1 rounded-full text-sm backdrop-blur-sm pointer-events-none">
+            <div className="flex items-center gap-1">
+              <MapPin size={14} />
+              <span>Showing all {reels.length} reels</span>
             </div>
           </div>
         )}
@@ -988,7 +1045,7 @@ export default function Reels() {
               </p>
               <p className="text-gray-400 mb-8 text-lg">
                 {userLocation 
-                  ? 'No restaurants in your delivery area have reels yet. Try expanding your search or check back later!'
+                  ? 'No restaurants in your delivery area have reels yet. Some restaurants may not have location setup for delivery.'
                   : 'Check back later for delicious content!'
                 }
               </p>
