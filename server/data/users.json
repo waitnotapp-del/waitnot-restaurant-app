@@ -58,5 +58,20 @@
     },
     "createdAt": "2024-12-11T10:30:00.000Z",
     "updatedAt": "2024-12-11T10:30:00.000Z"
+  },
+  {
+    "_id": "mj0zoxj0glt4tx5t5oh",
+    "username": "aman@gmail.com",
+    "name": "Aman",
+    "phone": "1234567890",
+    "email": "aman@gmail.com",
+    "password": "$2a$10$jF8FnoaJRxLptiD2i20oKO0eL7Q.91VAZCmh7iz9pJg05Y5SlPKTa",
+    "address": "Test Address, Mumbai",
+    "location": {
+      "latitude": 19.076,
+      "longitude": 72.8777
+    },
+    "createdAt": "2024-12-11T10:30:00.000Z",
+    "updatedAt": "2024-12-11T10:30:00.000Z"
   }
 ]
