@@ -466,7 +466,6 @@ export default function Home() {
           )}
         </div>
       )}
-      </div>
 
       {/* QR Scanner Modal */}
       {showScanner && <QRScanner onClose={() => setShowScanner(false)} />}
