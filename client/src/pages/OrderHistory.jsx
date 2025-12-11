@@ -53,9 +53,14 @@ export default function OrderHistory() {
       });
       
       console.log('📦 Orders received from API:', data);
-      console.log('📊 Number of orders:', data.length);
+      console.log('📊 Type of data:', typeof data);
+      console.log('📊 Is array:', Array.isArray(data));
       
-      setOrders(data);
+      // Ensure we always have an array
+      const ordersArray = Array.isArray(data) ? data : [];
+      console.log('📊 Number of orders:', ordersArray.length);
+      
+      setOrders(ordersArray);
     } catch (error) {
       console.error('❌ Error fetching orders:', error);
       console.error('📄 Error response:', error.response?.data);

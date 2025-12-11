@@ -466,33 +466,20 @@ router.get('/orders', async (req, res) => {
     console.log('📦 Orders found for phone', user.phone, ':', orders.length);
     console.log('📋 Order details:', orders.map(o => ({ id: o._id, phone: o.customerPhone, total: o.totalAmount, status: o.status })));
 
-    // If no orders found, let's return some debug info
-    if (orders.length === 0) {
-      console.log('⚠️ No orders found - returning debug info');
-      return res.json({
-        orders: [],
-        debug: {
-          userPhone: user.phone,
-          totalOrdersInDB: allOrders.length,
-          exactMatches: exactMatches.length,
-          similarMatches: similarMatches.length,
-          sampleOrders: allOrders.slice(0, 3).map(o => ({ phone: o.customerPhone, name: o.customerName }))
-        }
-      });
-    }
-
+    // Always return an array, even if empty
+    console.log('✅ Returning orders array:', orders.length);
     res.json(orders);
   } catch (error) {
     console.error('❌ Error getting orders:', error);
     console.error('❌ Error stack:', error.stack);
     
-    // Return more specific error information
+    // Always return proper error response
     if (error.name === 'JsonWebTokenError') {
-      res.status(401).json({ error: 'Invalid token', details: error.message });
+      return res.status(401).json({ error: 'Invalid token', details: error.message });
     } else if (error.name === 'TokenExpiredError') {
-      res.status(401).json({ error: 'Token expired', details: error.message });
+      return res.status(401).json({ error: 'Token expired', details: error.message });
     } else {
-      res.status(500).json({ error: 'Internal server error', details: error.message });
+      return res.status(500).json({ error: 'Internal server error', details: error.message });
     }
   }
 });
