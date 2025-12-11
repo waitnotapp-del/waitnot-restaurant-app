@@ -335,6 +335,11 @@ router.put('/profile', async (req, res) => {
   }
 });
 
+// Simple test endpoint to verify routes are working
+router.get('/test', (req, res) => {
+  res.json({ message: 'Users routes are working!', timestamp: new Date().toISOString() });
+});
+
 // Test login endpoint for debugging
 router.post('/test-login', async (req, res) => {
   try {
@@ -413,6 +418,7 @@ router.get('/debug-orders', async (req, res) => {
 
 // Get user's order history
 router.get('/orders', async (req, res) => {
+  console.log('🔍 /orders route hit at:', new Date().toISOString());
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     
@@ -478,7 +484,16 @@ router.get('/orders', async (req, res) => {
     res.json(orders);
   } catch (error) {
     console.error('❌ Error getting orders:', error);
-    res.status(401).json({ error: 'Invalid token' });
+    console.error('❌ Error stack:', error.stack);
+    
+    // Return more specific error information
+    if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ error: 'Invalid token', details: error.message });
+    } else if (error.name === 'TokenExpiredError') {
+      res.status(401).json({ error: 'Token expired', details: error.message });
+    } else {
+      res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
   }
 });
 
