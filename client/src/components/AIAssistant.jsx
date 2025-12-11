@@ -540,56 +540,36 @@ export default function AIAssistant() {
               const { latitude, longitude } = position.coords;
               
               try {
-                // Get user data from localStorage
-                const userData = JSON.parse(localStorage.getItem('user') || '{}');
-                const userToken = localStorage.getItem('userToken');
-                
-                if (!userData.phone || !userToken) {
-                  resolve(`❌ Please log in to place an order. You need to be logged in to save your order history.`);
-                  return;
-                }
-
-                // Create order data
+                // Create order
                 const orderData = {
                   restaurantId: selectedRestaurant._id,
                   items: [{
-                    menuItemId: selectedItem._id,
+                    itemId: selectedItem._id,
                     name: selectedItem.name,
                     price: selectedItem.price,
-                    quantity: quantity
+                    quantity: quantity,
+                    dietaryPreference: dietaryPreference
                   }],
                   totalAmount: totalAmount,
+                  deliveryAddress: {
+                    latitude,
+                    longitude,
+                    address: "Current Location" // You can enhance this with reverse geocoding
+                  },
                   orderType: 'delivery',
-                  customerName: userData.name || 'Customer',
-                  customerPhone: userData.phone,
-                  deliveryAddress: `Lat: ${latitude}, Lng: ${longitude}`,
-                  paymentMethod: 'cash_on_delivery',
-                  paymentStatus: 'pending'
+                  paymentMethod: 'cash_on_delivery'
                 };
 
-                // Send order to API
-                try {
-                  const response = await axios.post('/api/orders', orderData, {
-                    headers: {
-                      'Authorization': `Bearer ${userToken}`,
-                      'Content-Type': 'application/json'
-                    }
-                  });
-                  
-                  // Update current order state
-                  setCurrentOrder({
-                    items: orderData.items,
-                    restaurant: selectedRestaurant,
-                    totalAmount: totalAmount,
-                    deliveryAddress: orderData.deliveryAddress
-                  });
-
-                  console.log('Order placed successfully:', response.data);
-                } catch (orderError) {
-                  console.error('Error placing order:', orderError);
-                  resolve(`❌ Sorry, there was an issue placing your order. Please try again or contact support.`);
-                  return;
-                }
+                // Here you would typically send to your order API
+                // const response = await axios.post('/api/orders', orderData);
+                
+                // For now, simulate successful order
+                setCurrentOrder({
+                  items: orderData.items,
+                  restaurant: selectedRestaurant,
+                  totalAmount: totalAmount,
+                  deliveryAddress: orderData.deliveryAddress
+                });
 
                 // Reset ordering flow
                 setOrderingFlow({ isActive: false, step: null, selectedItem: null, selectedRestaurant: null, quantity: 1, dietaryPreference: null, userLocation: null, orderDetails: {} });

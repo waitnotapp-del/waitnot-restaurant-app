@@ -749,34 +749,6 @@
     "updatedAt": "2025-11-27T06:45:39.595Z"
   },
   {
-    "_id": "test_order_123456789",
-    "restaurantId": "midc8u7tc3cqndc1r26",
-    "items": [
-      {
-        "menuItemId": "midc8u7sirw497fp9rs",
-        "name": "Paneer Tikka",
-        "price": 250,
-        "quantity": 2
-      },
-      {
-        "menuItemId": "midc8u7sf0h89e1htwk",
-        "name": "Chicken Biryani",
-        "price": 350,
-        "quantity": 1
-      }
-    ],
-    "totalAmount": 850,
-    "orderType": "delivery",
-    "customerName": "Aman",
-    "customerPhone": "123456789",
-    "deliveryAddress": "Test Address, Mumbai",
-    "paymentMethod": "upi",
-    "paymentStatus": "paid",
-    "status": "delivered",
-    "createdAt": "2024-12-11T10:30:00.000Z",
-    "updatedAt": "2024-12-11T11:00:00.000Z"
-  },
-  {
     "_id": "mih2jyds1ysxkpp81z5",
     "restaurantId": "midc8u7tc3cqndc1r26",
     "items": [
@@ -797,55 +769,5 @@
     "status": "completed",
     "createdAt": "2025-11-27T06:45:07.408Z",
     "updatedAt": "2025-11-27T06:45:39.590Z"
-  },
-  {
-    "_id": "test_order_1234567890_1",
-    "restaurantId": "midc8u7tc3cqndc1r26",
-    "items": [
-      {
-        "menuItemId": "midc8u7sirw497fp9rs",
-        "name": "Paneer Tikka",
-        "price": 250,
-        "quantity": 2
-      },
-      {
-        "menuItemId": "midc8u7sf0h89e1htwk",
-        "name": "Chicken Biryani",
-        "price": 350,
-        "quantity": 1
-      }
-    ],
-    "totalAmount": 850,
-    "orderType": "delivery",
-    "customerName": "Aman",
-    "customerPhone": "1234567890",
-    "deliveryAddress": "Test Address, Mumbai",
-    "paymentMethod": "upi",
-    "paymentStatus": "paid",
-    "status": "delivered",
-    "createdAt": "2024-12-11T10:30:00.000Z",
-    "updatedAt": "2024-12-11T11:00:00.000Z"
-  },
-  {
-    "_id": "test_order_1234567890_2",
-    "restaurantId": "midc8u9d91l99mo7yxq",
-    "items": [
-      {
-        "menuItemId": "midc8u9d9fikr131bye",
-        "name": "Margherita Pizza",
-        "price": 300,
-        "quantity": 1
-      }
-    ],
-    "totalAmount": 300,
-    "orderType": "delivery",
-    "customerName": "Aman",
-    "customerPhone": "1234567890",
-    "deliveryAddress": "Test Address, Mumbai",
-    "paymentMethod": "card",
-    "paymentStatus": "paid",
-    "status": "completed",
-    "createdAt": "2024-12-11T09:30:00.000Z",
-    "updatedAt": "2024-12-11T10:30:00.000Z"
   }
 ]

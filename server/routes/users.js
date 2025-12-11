@@ -335,152 +335,30 @@ router.put('/profile', async (req, res) => {
   }
 });
 
-// Simple test endpoint to verify routes are working
-router.get('/test', (req, res) => {
-  res.json({ message: 'Users routes are working!', timestamp: new Date().toISOString() });
-});
-
-// Test login endpoint for debugging
-router.post('/test-login', async (req, res) => {
-  try {
-    const { phone } = req.body;
-    
-    console.log('🧪 Test login for phone:', phone);
-    
-    // Find user by phone
-    const user = await userDB.findByPhone(phone);
-    
-    if (!user) {
-      console.log('❌ User not found for phone:', phone);
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    console.log('✅ User found:', { id: user._id, name: user.name, phone: user.phone });
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id, phone: user.phone },
-      process.env.JWT_SECRET || 'your_jwt_secret_key_here',
-      { expiresIn: '30d' }
-    );
-    
-    console.log('🔑 Token generated for user');
-    
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        phone: user.phone,
-        name: user.name
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error in test login:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Debug endpoint to check database contents
-router.get('/debug-orders', async (req, res) => {
-  try {
-    const { orderDB } = await import('../db.js');
-    const allOrders = await orderDB.findAll();
-    const allUsers = await userDB.findAll();
-    
-    console.log('🔍 DEBUG: All users in database:');
-    allUsers.forEach(user => {
-      console.log(`  - ${user.name} (${user.phone}) - ID: ${user._id}`);
-    });
-    
-    console.log('🔍 DEBUG: All orders in database:');
-    allOrders.forEach(order => {
-      console.log(`  - Order ${order._id}: ${order.customerName} (${order.customerPhone}) - ₹${order.totalAmount}`);
-    });
-    
-    // Check specific phone number
-    const ordersFor123456789 = allOrders.filter(o => o.customerPhone === '123456789');
-    console.log(`🔍 DEBUG: Orders for phone 123456789: ${ordersFor123456789.length}`);
-    ordersFor123456789.forEach(order => {
-      console.log(`  - ${order._id}: ${order.customerName} - ₹${order.totalAmount} - ${order.status}`);
-    });
-    
-    res.json({
-      users: allUsers.map(u => ({ id: u._id, name: u.name, phone: u.phone })),
-      orders: allOrders.map(o => ({ id: o._id, customerName: o.customerName, customerPhone: o.customerPhone, total: o.totalAmount, status: o.status })),
-      ordersFor123456789: ordersFor123456789.map(o => ({ id: o._id, customerName: o.customerName, total: o.totalAmount, status: o.status }))
-    });
-  } catch (error) {
-    console.error('Error in debug endpoint:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Get user's order history
 router.get('/orders', async (req, res) => {
-  console.log('🔍 /orders route hit at:', new Date().toISOString());
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     
-    console.log('🔍 Orders API called with token:', token ? 'Present' : 'Missing');
-    
     if (!token) {
-      console.log('❌ No token provided');
       return res.status(401).json({ error: 'No token provided' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key_here');
-    console.log('🔓 Token decoded:', { userId: decoded.userId, phone: decoded.phone });
-    
     const user = await userDB.findById(decoded.userId);
-    console.log('👤 User found:', user ? { id: user._id, phone: user.phone, name: user.name } : 'Not found');
 
     if (!user) {
-      console.log('❌ User not found in database');
       return res.status(404).json({ error: 'User not found' });
     }
 
     // Get orders by phone number
     const { orderDB } = await import('../db.js');
-    
-    // First, let's check all orders to debug
-    const allOrders = await orderDB.findAll();
-    console.log('🔍 Total orders in database:', allOrders.length);
-    
-    // Check for exact phone match
-    const exactMatches = allOrders.filter(o => o.customerPhone === user.phone);
-    console.log('🔍 Exact phone matches for', user.phone, ':', exactMatches.length);
-    
-    // Check for similar phone matches (in case of formatting issues)
-    const similarMatches = allOrders.filter(o => 
-      o.customerPhone && (
-        o.customerPhone.includes(user.phone) || 
-        user.phone.includes(o.customerPhone) ||
-        o.customerPhone.replace(/\D/g, '') === user.phone.replace(/\D/g, '')
-      )
-    );
-    console.log('🔍 Similar phone matches:', similarMatches.length);
-    
     const orders = await orderDB.findByPhone(user.phone);
-    
-    console.log('📦 Orders found for phone', user.phone, ':', orders.length);
-    console.log('📋 Order details:', orders.map(o => ({ id: o._id, phone: o.customerPhone, total: o.totalAmount, status: o.status })));
 
-    // Always return an array, even if empty
-    console.log('✅ Returning orders array:', orders.length);
     res.json(orders);
   } catch (error) {
-    console.error('❌ Error getting orders:', error);
-    console.error('❌ Error stack:', error.stack);
-    
-    // Always return proper error response
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Invalid token', details: error.message });
-    } else if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired', details: error.message });
-    } else {
-      return res.status(500).json({ error: 'Internal server error', details: error.message });
-    }
+    console.error('Error getting orders:', error);
+    res.status(401).json({ error: 'Invalid token' });
   }
 });
 

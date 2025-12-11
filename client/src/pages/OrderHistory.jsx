@@ -14,18 +14,12 @@ export default function OrderHistory() {
     const token = localStorage.getItem('userToken');
     const userData = localStorage.getItem('user');
 
-    console.log('🔍 OrderHistory useEffect - Token:', token ? 'Present' : 'Missing');
-    console.log('🔍 OrderHistory useEffect - UserData:', userData ? JSON.parse(userData) : 'Missing');
-
     if (!token || !userData) {
-      console.log('❌ No token or user data - redirecting to login');
       navigate('/login');
       return;
     }
 
-    const parsedUser = JSON.parse(userData);
-    setUser(parsedUser);
-    console.log('👤 Setting user:', parsedUser);
+    setUser(JSON.parse(userData));
     fetchOrders(token);
   }, [navigate]);
 
@@ -43,31 +37,15 @@ export default function OrderHistory() {
 
   const fetchOrders = async (token) => {
     try {
-      console.log('🔍 Fetching orders with token:', token ? 'Present' : 'Missing');
-      console.log('👤 Current user data:', JSON.parse(localStorage.getItem('user') || '{}'));
-      
       const { data } = await axios.get('/api/users/orders', {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      
-      console.log('📦 Orders received from API:', data);
-      console.log('📊 Type of data:', typeof data);
-      console.log('📊 Is array:', Array.isArray(data));
-      
-      // Ensure we always have an array
-      const ordersArray = Array.isArray(data) ? data : [];
-      console.log('📊 Number of orders:', ordersArray.length);
-      
-      setOrders(ordersArray);
+      setOrders(data);
     } catch (error) {
-      console.error('❌ Error fetching orders:', error);
-      console.error('📄 Error response:', error.response?.data);
-      console.error('🔢 Error status:', error.response?.status);
-      
+      console.error('Error fetching orders:', error);
       if (error.response?.status === 401) {
-        console.log('🚪 Unauthorized - redirecting to login');
         localStorage.removeItem('userToken');
         localStorage.removeItem('user');
         navigate('/login');
@@ -138,40 +116,6 @@ export default function OrderHistory() {
             <Package size={64} className="text-gray-400 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">No Orders Yet</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">Start ordering from your favorite restaurants!</p>
-            
-            {/* Debug Information */}
-            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 text-left max-w-md mx-auto">
-              <h3 className="font-bold mb-2">Debug Info:</h3>
-              <p className="text-sm">User: {user?.name} ({user?.phone})</p>
-              <p className="text-sm">Token: {localStorage.getItem('userToken') ? 'Present' : 'Missing'}</p>
-              <button
-                onClick={async () => {
-                  try {
-                    const response = await axios.get('/api/users/debug-orders');
-                    console.log('Debug response:', response.data);
-                    alert('Check console for debug info');
-                  } catch (error) {
-                    console.error('Debug error:', error);
-                    alert('Debug error - check console');
-                  }
-                }}
-                className="bg-blue-500 text-white px-3 py-1 rounded text-sm mt-2 mr-2"
-              >
-                Debug DB
-              </button>
-              <button
-                onClick={async () => {
-                  const token = localStorage.getItem('userToken');
-                  if (token) {
-                    fetchOrders(token);
-                  }
-                }}
-                className="bg-green-500 text-white px-3 py-1 rounded text-sm mt-2"
-              >
-                Retry Fetch
-              </button>
-            </div>
-            
             <button
               onClick={() => window.location.href = '/'}
               className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors"
