@@ -696,7 +696,6 @@ export default function AIAssistant() {
   const getAIResponse = async (message) => {
     const lowerMessage = message.toLowerCase();
 
-    // Use structured conversation flow for food ordering
     try {
       // Initialize session ID if not exists
       if (!conversationState.sessionId) {
@@ -704,39 +703,58 @@ export default function AIAssistant() {
         setConversationState(prev => ({ ...prev, sessionId: newSessionId }));
       }
       
-      const response = await axios.post('/api/voice/chat', {
+      // Try OpenAI-powered AI endpoint first
+      const aiResponse = await axios.post('/api/ai/chat', {
         message: message,
         userId: 'user123', // You can get this from auth context
-        sessionId: conversationState.sessionId || `temp_${Date.now()}`
+        sessionId: conversationState.sessionId || `temp_${Date.now()}`,
+        includeRestaurants: true
       });
 
-      const { response: aiResponse, suggestions, restaurants: foundRestaurants, conversationState: newState } = response.data;
+      const { response, restaurantCount } = aiResponse.data;
       
-      // Update conversation state
-      if (newState) {
-        setConversationState(prev => ({
-          ...prev,
-          step: newState.step,
-          foodItem: newState.foodItem,
-          isVeg: newState.isVeg,
-          quantity: newState.quantity
-        }));
-      }
+      console.log(`✅ OpenAI Response generated (${restaurantCount} restaurants in context)`);
+      return response;
       
-      // Update restaurants if found
-      if (foundRestaurants && foundRestaurants.length > 0) {
-        setRestaurants(foundRestaurants);
-      }
-      
-      return aiResponse;
     } catch (error) {
-      console.error('Voice API error:', error);
-      // Fallback to simple responses with food search
-      return getSimpleAIResponseWithSearch(message, lowerMessage);
+      console.error('❌ OpenAI API error, falling back to voice API:', error);
+      
+      // Fallback to voice API
+      try {
+        const response = await axios.post('/api/voice/chat', {
+          message: message,
+          userId: 'user123',
+          sessionId: conversationState.sessionId || `temp_${Date.now()}`
+        });
+
+        const { response: aiResponse, suggestions, restaurants: foundRestaurants, conversationState: newState } = response.data;
+        
+        // Update conversation state
+        if (newState) {
+          setConversationState(prev => ({
+            ...prev,
+            step: newState.step,
+            foodItem: newState.foodItem,
+            isVeg: newState.isVeg,
+            quantity: newState.quantity
+          }));
+        }
+        
+        // Update restaurants if found
+        if (foundRestaurants && foundRestaurants.length > 0) {
+          setRestaurants(foundRestaurants);
+        }
+        
+        return aiResponse;
+      } catch (voiceError) {
+        console.error('❌ Voice API also failed, using enhanced fallback:', voiceError);
+        // Enhanced fallback with restaurant search
+        return getEnhancedAIResponseWithSearch(message, lowerMessage);
+      }
     }
   };
 
-  const getSimpleAIResponseWithSearch = async (message, lowerMessage) => {
+  const getEnhancedAIResponseWithSearch = async (message, lowerMessage) => {
     // Handle food requests with basic search
     if (lowerMessage.includes('want') || lowerMessage.includes('get me') || lowerMessage.includes('order')) {
       const foodItems = ['burger', 'pizza', 'biryani', 'chicken', 'pasta', 'noodles'];
@@ -744,11 +762,19 @@ export default function AIAssistant() {
       
       if (foundFood) {
         // Search restaurants for this food item
-        const matchingRestaurants = restaurants.filter(restaurant => 
-          restaurant.menu && restaurant.menu.some(item => 
+        const matchingRestaurants = restaurants.filter(restaurant => {
+          // Check menu items
+          const hasMenuItems = restaurant.menu && restaurant.menu.some(item => 
             item.name.toLowerCase().includes(foundFood) && item.available !== false
-          )
-        );
+          );
+          
+          // Check cuisine types
+          const hasCuisine = restaurant.cuisine && restaurant.cuisine.some(cuisine => 
+            cuisine.toLowerCase().includes(foundFood.toLowerCase())
+          );
+          
+          return hasMenuItems || hasCuisine;
+        });
         
         if (matchingRestaurants.length > 0) {
           let response = `🍽️ Found ${foundFood.toUpperCase()} at ${matchingRestaurants.length} restaurant${matchingRestaurants.length > 1 ? 's' : ''}:\n\n`;
@@ -757,9 +783,15 @@ export default function AIAssistant() {
             response += `${index + 1}. ${restaurant.name}\n`;
             response += `⭐ ${restaurant.rating}/5 | 🕐 ${restaurant.deliveryTime}\n`;
             
-            const foodMenuItems = restaurant.menu.filter(item => 
-              item.name.toLowerCase().includes(foundFood) && item.available !== false
-            );
+            const foodMenuItems = restaurant.menu.filter(item => {
+              const nameMatch = item.name.toLowerCase().includes(foundFood);
+              const cuisineMatch = restaurant.cuisine && restaurant.cuisine.some(cuisine => 
+                cuisine.toLowerCase().includes(foundFood.toLowerCase())
+              );
+              const available = item.available !== false;
+              
+              return (nameMatch || cuisineMatch) && available;
+            });
             
             if (foodMenuItems.length > 0) {
               response += `${foundFood.toUpperCase()} Items:\n`;
@@ -790,6 +822,59 @@ export default function AIAssistant() {
     // Handle ordering flow if active
     if (orderingFlow.isActive) {
       return handleOrderingFlow(message, lowerMessage);
+    }
+
+    // Handle direct food mentions (like just saying "pizza")
+    const foodItems = ['burger', 'pizza', 'biryani', 'chicken', 'pasta', 'noodles'];
+    const foundFood = foodItems.find(food => lowerMessage.includes(food));
+    
+    if (foundFood && !lowerMessage.includes('want') && !lowerMessage.includes('get me') && !lowerMessage.includes('order')) {
+      // Search restaurants for this food item
+      const matchingRestaurants = restaurants.filter(restaurant => {
+        // Check menu items
+        const hasMenuItems = restaurant.menu && restaurant.menu.some(item => 
+          item.name.toLowerCase().includes(foundFood) && item.available !== false
+        );
+        
+        // Check cuisine types
+        const hasCuisine = restaurant.cuisine && restaurant.cuisine.some(cuisine => 
+          cuisine.toLowerCase().includes(foundFood.toLowerCase())
+        );
+        
+        return hasMenuItems || hasCuisine;
+      });
+      
+      if (matchingRestaurants.length > 0) {
+        let response = `🍽️ Found ${foundFood.toUpperCase()} at ${matchingRestaurants.length} restaurant${matchingRestaurants.length > 1 ? 's' : ''}:\n\n`;
+        
+        matchingRestaurants.slice(0, 3).forEach((restaurant, index) => {
+          response += `${index + 1}. ${restaurant.name}\n`;
+          response += `⭐ ${restaurant.rating}/5 | 🕐 ${restaurant.deliveryTime}\n`;
+          
+          const foodMenuItems = restaurant.menu.filter(item => {
+            const nameMatch = item.name.toLowerCase().includes(foundFood);
+            const cuisineMatch = restaurant.cuisine && restaurant.cuisine.some(cuisine => 
+              cuisine.toLowerCase().includes(foundFood.toLowerCase())
+            );
+            const available = item.available !== false;
+            
+            return (nameMatch || cuisineMatch) && available;
+          });
+          
+          if (foodMenuItems.length > 0) {
+            response += `${foundFood.toUpperCase()} Items:\n`;
+            foodMenuItems.slice(0, 2).forEach(item => {
+              response += `• ${item.name} - ₹${item.price}\n`;
+            });
+          }
+          response += '\n';
+        });
+        
+        response += `🛒 To place an order, just tell me which restaurant and items you'd like!`;
+        return response;
+      } else {
+        return `🔍 I couldn't find any ${foundFood} items in our current restaurants. Try browsing all restaurants or search for similar items like:\n\n• Pizza → Italian cuisine\n• Biryani → Indian cuisine\n• Noodles → Chinese cuisine\n• Burgers → Fast food\n\nWhat else can I help you find?`;
+      }
     }
 
     // Check for location-based queries first

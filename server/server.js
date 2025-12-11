@@ -26,6 +26,7 @@ import userRoutes from './routes/users.js';
 import reviewRoutes from './routes/reviews.js';
 import locationRoutes from './routes/locations.js';
 import voiceRoutes from './routes/voice.js';
+import aiRoutes from './routes/ai.js';
 
 dotenv.config();
 
@@ -186,6 +187,7 @@ app.use('/api/users', userRoutes); // No cache for user data
 app.use('/api/reviews', cacheMiddleware(300), reviewRoutes); // 5 minutes cache
 app.use('/api/locations', locationRoutes); // No cache for location tracking
 app.use('/api/voice', voiceRoutes); // No cache for voice conversations
+app.use('/api/ai', aiRoutes); // No cache for AI conversations
 
 // Socket.IO for real-time orders
 io.on('connection', (socket) => {

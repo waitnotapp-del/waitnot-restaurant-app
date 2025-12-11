@@ -253,15 +253,6 @@
         "available": true
       },
       {
-        "_id": "gk003cfr",
-        "name": "Chicken Fried Rice",
-        "price": 220,
-        "category": "Main Course",
-        "isVeg": false,
-        "description": "Wok-tossed rice with chicken and vegetables",
-        "available": true
-      },
-      {
         "_id": "gk004vfr",
         "name": "Veg Fried Rice",
         "price": 180,
@@ -277,24 +268,6 @@
         "category": "Main Course",
         "isVeg": false,
         "description": "Indo-Chinese chicken in spicy sauce",
-        "available": true
-      },
-      {
-        "_id": "gk006vm",
-        "name": "Veg Manchurian",
-        "price": 200,
-        "category": "Main Course",
-        "isVeg": true,
-        "description": "Vegetable balls in tangy sauce",
-        "available": true
-      },
-      {
-        "_id": "gk007ct",
-        "name": "Chicken Tikka",
-        "price": 300,
-        "category": "Starters",
-        "isVeg": false,
-        "description": "Grilled chicken marinated in spices",
         "available": true
       },
       {
@@ -325,17 +298,8 @@
         "available": true
       },
       {
-        "_id": "gk011gj",
-        "name": "Gulab Jamun",
-        "price": 80,
-        "category": "Desserts",
-        "isVeg": true,
-        "description": "Sweet milk dumplings in sugar syrup",
-        "available": true
-      },
-      {
         "_id": "gk012ic",
-        "name": "Ice Cream",
+        "name": "Choclate ice Cream",
         "price": 60,
         "category": "Desserts",
         "isVeg": true,
