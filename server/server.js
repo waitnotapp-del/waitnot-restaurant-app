@@ -46,13 +46,38 @@ app.use(rateLimitMiddleware);
 app.use(memoryMonitoringMiddleware);
 app.use(jsonOptimizationMiddleware);
 
-// CORS with optimizations
+// CORS with optimizations - Allow all Vercel deployments
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://waitnot-restaurant-app.vercel.app', 'https://waitnot-backend-42e3.onrender.com']
-    : true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // In production, check if origin is from allowed domains
+    if (process.env.NODE_ENV === 'production') {
+      const allowedDomains = [
+        'https://waitnot-restaurant-app.vercel.app',
+        'https://waitnot-restaurant-app-jet.vercel.app', 
+        'https://waitnot-backend-42e3.onrender.com'
+      ];
+      
+      // Allow any Vercel deployment of the app
+      const isVercelApp = origin.includes('waitnot-restaurant-app') && origin.includes('vercel.app');
+      const isAllowedDomain = allowedDomains.includes(origin);
+      
+      if (isVercelApp || isAllowedDomain) {
+        return callback(null, true);
+      } else {
+        return callback(new Error('Not allowed by CORS'), false);
+      }
+    } else {
+      // Allow all origins in development
+      return callback(null, true);
+    }
+  },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'Cache-Control']
 }));
 
 // Body parsing with optimizations
@@ -177,6 +202,21 @@ io.on('connection', (socket) => {
 
 // Make io accessible to routes
 app.set('io', io);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// CORS preflight handler
+app.options('*', (req, res) => {
+  res.status(200).end();
+});
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
