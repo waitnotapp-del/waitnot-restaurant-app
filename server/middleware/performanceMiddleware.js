@@ -36,12 +36,16 @@ export const securityMiddleware = helmet({
 export const cacheMiddleware = (maxAge = 300) => {
   return (req, res, next) => {
     // Set cache headers for GET requests
-    if (req.method === 'GET') {
-      res.set({
-        'Cache-Control': `public, max-age=${maxAge}`,
-        'ETag': `"${Date.now()}"`,
-        'Vary': 'Accept-Encoding',
-      });
+    if (req.method === 'GET' && !res.headersSent) {
+      try {
+        res.set({
+          'Cache-Control': `public, max-age=${maxAge}`,
+          'ETag': `"${Date.now()}"`,
+          'Vary': 'Accept-Encoding',
+        });
+      } catch (error) {
+        console.debug('Could not set cache headers:', error.message);
+      }
     }
     next();
   };
@@ -60,8 +64,15 @@ export const timingMiddleware = (req, res, next) => {
       console.warn(`Slow request: ${req.method} ${req.path} took ${duration.toFixed(2)}ms`);
     }
     
-    // Add timing header
-    res.set('X-Response-Time', `${duration.toFixed(2)}ms`);
+    // Add timing header only if headers haven't been sent
+    if (!res.headersSent) {
+      try {
+        res.set('X-Response-Time', `${duration.toFixed(2)}ms`);
+      } catch (error) {
+        // Silently ignore header setting errors
+        console.debug('Could not set timing header:', error.message);
+      }
+    }
   });
   
   next();
@@ -109,11 +120,17 @@ export const rateLimitMiddleware = (req, res, next) => {
   }
   
   // Add rate limit headers
-  res.set({
-    'X-RateLimit-Limit': RATE_LIMIT_MAX,
-    'X-RateLimit-Remaining': Math.max(0, RATE_LIMIT_MAX - (clientData?.count || 1)),
-    'X-RateLimit-Reset': new Date(now + RATE_LIMIT_WINDOW).toISOString()
-  });
+  if (!res.headersSent) {
+    try {
+      res.set({
+        'X-RateLimit-Limit': RATE_LIMIT_MAX,
+        'X-RateLimit-Remaining': Math.max(0, RATE_LIMIT_MAX - (clientData?.count || 1)),
+        'X-RateLimit-Reset': new Date(now + RATE_LIMIT_WINDOW).toISOString()
+      });
+    } catch (error) {
+      console.debug('Could not set rate limit headers:', error.message);
+    }
+  }
   
   next();
 };
@@ -127,10 +144,16 @@ export const jsonOptimizationMiddleware = (req, res, next) => {
     const optimizedData = removeEmptyValues(data);
     
     // Add performance headers
-    res.set({
-      'Content-Type': 'application/json; charset=utf-8',
-      'X-Content-Length': JSON.stringify(optimizedData).length
-    });
+    if (!res.headersSent) {
+      try {
+        res.set({
+          'Content-Type': 'application/json; charset=utf-8',
+          'X-Content-Length': JSON.stringify(optimizedData).length
+        });
+      } catch (error) {
+        console.debug('Could not set performance headers:', error.message);
+      }
+    }
     
     return originalJson.call(this, optimizedData);
   };
@@ -174,8 +197,12 @@ export const memoryMonitoringMiddleware = (req, res, next) => {
   }
   
   // Add memory headers in development
-  if (process.env.NODE_ENV === 'development') {
-    res.set('X-Memory-Usage', JSON.stringify(memUsageMB));
+  if (process.env.NODE_ENV === 'development' && !res.headersSent) {
+    try {
+      res.set('X-Memory-Usage', JSON.stringify(memUsageMB));
+    } catch (error) {
+      console.debug('Could not set memory headers:', error.message);
+    }
   }
   
   next();
