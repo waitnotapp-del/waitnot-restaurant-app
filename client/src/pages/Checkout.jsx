@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Wallet, Smartphone } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useNotification } from '../context/NotificationContext';
 import axios from 'axios';
 import { initiateRazorpayPayment } from '../components/RazorpayPayment';
 import { App as CapacitorApp } from '@capacitor/app';
 
 export default function Checkout() {
   const { cart, restaurant, updateQuantity, removeFromCart, clearCart, total } = useCart();
+  const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
   const [orderType, setOrderType] = useState('delivery');
   const [formData, setFormData] = useState({
@@ -40,7 +42,7 @@ export default function Checkout() {
       const finalTotal = total + 40 + Math.round(total * 0.05);
       
       if (finalTotal <= 0) {
-        alert('Invalid order total');
+        showError('Invalid order total', { title: 'Order Error' });
         return;
       }
       
@@ -74,13 +76,19 @@ export default function Checkout() {
             };
 
             await axios.post('/api/orders', orderData);
-            alert('Order placed successfully! Payment confirmed.');
+            showSuccess('Order placed successfully! Payment confirmed.', {
+              title: 'Order Confirmed',
+              duration: 6000
+            });
             clearCart();
             navigate('/');
           },
           onFailure: (error) => {
             console.error('Payment failed:', error);
-            alert('Payment failed or cancelled. Please try again.');
+            showError('Payment failed or cancelled. Please try again.', {
+              title: 'Payment Failed',
+              duration: 8000
+            });
           }
         });
       } else {
@@ -100,13 +108,19 @@ export default function Checkout() {
         };
 
         await axios.post('/api/orders', orderData);
-        alert('Order placed successfully! Pay cash on delivery.');
+        showSuccess('Order placed successfully! Pay cash on delivery.', {
+          title: 'Order Confirmed',
+          duration: 6000
+        });
         clearCart();
         navigate('/');
       }
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('Failed to place order');
+      showError('Failed to place order. Please try again.', {
+        title: 'Order Failed',
+        duration: 8000
+      });
     }
   };
 

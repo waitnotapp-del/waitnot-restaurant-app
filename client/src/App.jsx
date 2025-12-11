@@ -3,6 +3,7 @@ import { useEffect, Suspense, lazy } from 'react';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NetworkProvider, useNetwork } from './context/NetworkContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { setNetworkErrorHandler } from './api/axios';
 
 // Eager load critical components (above the fold)
@@ -83,9 +84,11 @@ function App() {
   return (
     <ThemeProvider>
       <NetworkProvider>
-        <CartProvider>
-          <AppContent />
-        </CartProvider>
+        <NotificationProvider>
+          <CartProvider>
+            <AppContent />
+          </CartProvider>
+        </NotificationProvider>
       </NetworkProvider>
     </ThemeProvider>
   );

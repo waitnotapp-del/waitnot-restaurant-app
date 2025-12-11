@@ -7,14 +7,17 @@ import { convertNumerals } from '../utils/numberFormatter';
 import { getUserLocation } from '../utils/geolocation';
 import { useRestaurantCache } from '../utils/restaurantCache';
 import { useDebounce, useOptimizedAPI, usePerformanceOptimization } from '../utils/performanceOptimizer';
+import { useNotification } from '../context/NotificationContext';
 import OptimizedImage from '../components/OptimizedImage';
 import VirtualizedList from '../components/VirtualizedList';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
+import LocationDisplay from '../components/LocationDisplay';
 
 export default function Home() {
   const { t, i18n } = useTranslation();
+  const { showSuccess, showError, showInfo } = useNotification();
   const [restaurants, setRestaurants] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -194,18 +197,33 @@ export default function Home() {
     
     try {
       const location = await getUserLocation();
-      setUserLocation(location);
+      setUserLocation({
+        ...location,
+        timestamp: new Date().toISOString()
+      });
       setShowLocationStatus(true); // Show status indicator
       
       // Save location data to database
       await saveLocationData(location.latitude, location.longitude);
+      
+      // Show success notification
+      showSuccess('Location detected successfully!', {
+        title: 'Location Found'
+      });
       
       // Fetch nearby restaurants when location is manually detected
       await fetchNearbyRestaurants(location.latitude, location.longitude);
       
     } catch (error) {
       console.error('Location error:', error);
-      setLocationError(error.message || 'Failed to get location');
+      const errorMessage = error.message || 'Failed to get location';
+      setLocationError(errorMessage);
+      
+      // Show error notification instead of alert
+      showError(errorMessage, {
+        title: 'Location Error',
+        duration: 8000
+      });
     } finally {
       setLocationLoading(false);
     }
@@ -353,25 +371,34 @@ export default function Home() {
           </button>
         </div>
         
-        {/* Location Status - Auto-hide after 5 seconds */}
+        {/* Location Details Display */}
         {userLocation && showLocationStatus && (
           <div className="mt-3 animate-fade-in">
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between shadow-sm transition-all duration-300">
-              <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-green-600 dark:text-green-400" />
-                <span className="text-sm text-green-700 dark:text-green-300">
-                  Location detected • Delivery zones available
-                </span>
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg shadow-sm transition-all duration-300">
+              <div className="flex items-start justify-between mb-3">
+                <h4 className="text-sm font-medium text-green-800 dark:text-green-300">
+                  📍 Your Location
+                </h4>
+                <button
+                  onClick={() => setShowLocationStatus(false)}
+                  className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors p-1 rounded hover:bg-green-100 dark:hover:bg-green-800/30"
+                  title="Hide location details"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <button
-                onClick={() => setShowLocationStatus(false)}
-                className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors p-1 rounded hover:bg-green-100 dark:hover:bg-green-800/30"
-                title="Hide notification"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <LocationDisplay 
+                location={userLocation} 
+                showDetails={true}
+                className="text-green-700 dark:text-green-300"
+              />
+              {nearbyCount > 0 && (
+                <div className="mt-2 text-xs text-green-600 dark:text-green-400">
+                  🍽️ {nearbyCount} restaurants deliver to your area
+                </div>
+              )}
             </div>
           </div>
         )}

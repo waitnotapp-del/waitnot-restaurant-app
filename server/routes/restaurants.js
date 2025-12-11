@@ -210,18 +210,26 @@ router.patch('/:id/payment-settings', async (req, res) => {
 // Update location settings
 router.patch('/:id/location-settings', async (req, res) => {
   try {
+    console.log('🔍 Location settings update request:', {
+      restaurantId: req.params.id,
+      body: req.body
+    });
+    
     const { latitude, longitude, deliveryRadiusKm, address } = req.body;
     
     // Validate coordinates
     if (latitude !== undefined && (isNaN(latitude) || latitude < -90 || latitude > 90)) {
+      console.log('❌ Invalid latitude:', latitude);
       return res.status(400).json({ error: 'Invalid latitude. Must be between -90 and 90' });
     }
     
     if (longitude !== undefined && (isNaN(longitude) || longitude < -180 || longitude > 180)) {
+      console.log('❌ Invalid longitude:', longitude);
       return res.status(400).json({ error: 'Invalid longitude. Must be between -180 and 180' });
     }
     
     if (deliveryRadiusKm !== undefined && (isNaN(deliveryRadiusKm) || deliveryRadiusKm < 0)) {
+      console.log('❌ Invalid delivery radius:', deliveryRadiusKm);
       return res.status(400).json({ error: 'Invalid delivery radius. Must be a positive number' });
     }
     
@@ -231,12 +239,20 @@ router.patch('/:id/location-settings', async (req, res) => {
     if (deliveryRadiusKm !== undefined) locationSettings.deliveryRadiusKm = parseFloat(deliveryRadiusKm);
     if (address !== undefined) locationSettings.address = address;
     
+    console.log('📍 Updating restaurant with location settings:', locationSettings);
+    
     const restaurant = await restaurantDB.update(req.params.id, locationSettings);
-    if (!restaurant) return res.status(404).json({ error: 'Restaurant not found' });
+    if (!restaurant) {
+      console.log('❌ Restaurant not found:', req.params.id);
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+    
+    console.log('✅ Location settings updated successfully');
     
     const { password, ...rest } = restaurant;
     res.json(rest);
   } catch (error) {
+    console.error('❌ Error updating location settings:', error);
     res.status(500).json({ error: error.message });
   }
 });
