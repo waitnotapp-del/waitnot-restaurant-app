@@ -689,6 +689,30 @@ export default function AIAssistant() {
   const getAIResponse = async (message) => {
     const lowerMessage = message.toLowerCase();
 
+    // Use structured conversation flow for food ordering
+    try {
+      const response = await axios.post('/api/voice/chat', {
+        message: message,
+        userId: 'user123', // You can get this from auth context
+        sessionId: Date.now().toString() // Simple session management
+      });
+
+      const { response: aiResponse, suggestions, restaurants: foundRestaurants } = response.data;
+      
+      // Update restaurants if found
+      if (foundRestaurants && foundRestaurants.length > 0) {
+        setRestaurants(foundRestaurants);
+      }
+      
+      return aiResponse;
+    } catch (error) {
+      console.error('Voice API error:', error);
+      // Fallback to simple responses
+      return getSimpleAIResponse(message, lowerMessage);
+    }
+  };
+
+  const getSimpleAIResponse = (message, lowerMessage) => {
     // Simple test response to check if AI is working
     if (lowerMessage.includes('test') || lowerMessage.includes('hello')) {
       return "✅ AI Assistant is working! I can help you with:\n\n🍽️ Finding restaurants\n📋 Viewing menus\n🛒 Placing orders\n🎤 Voice commands\n\nWhat would you like to do?";
