@@ -235,6 +235,7 @@
     "tables": 15,
     "menu": [
       {
+        "_id": "gk001bc",
         "name": "Butter Chicken",
         "price": 280,
         "category": "Main Course",
@@ -243,6 +244,7 @@
         "available": true
       },
       {
+        "_id": "gk002pbm",
         "name": "Paneer Butter Masala",
         "price": 250,
         "category": "Main Course",
@@ -251,6 +253,7 @@
         "available": true
       },
       {
+        "_id": "gk003cfr",
         "name": "Chicken Fried Rice",
         "price": 220,
         "category": "Main Course",
@@ -259,6 +262,7 @@
         "available": true
       },
       {
+        "_id": "gk004vfr",
         "name": "Veg Fried Rice",
         "price": 180,
         "category": "Main Course",
@@ -267,6 +271,7 @@
         "available": true
       },
       {
+        "_id": "gk005cm",
         "name": "Chicken Manchurian",
         "price": 260,
         "category": "Main Course",
@@ -275,6 +280,7 @@
         "available": true
       },
       {
+        "_id": "gk006vm",
         "name": "Veg Manchurian",
         "price": 200,
         "category": "Main Course",
@@ -283,6 +289,7 @@
         "available": true
       },
       {
+        "_id": "gk007ct",
         "name": "Chicken Tikka",
         "price": 300,
         "category": "Starters",
@@ -291,6 +298,7 @@
         "available": true
       },
       {
+        "_id": "gk008pt",
         "name": "Paneer Tikka",
         "price": 250,
         "category": "Starters",
@@ -299,6 +307,7 @@
         "available": true
       },
       {
+        "_id": "gk009pa",
         "name": "Pasta Alfredo",
         "price": 240,
         "category": "Main Course",
@@ -307,6 +316,7 @@
         "available": true
       },
       {
+        "_id": "gk010cp",
         "name": "Chicken Pasta",
         "price": 280,
         "category": "Main Course",
@@ -315,6 +325,7 @@
         "available": true
       },
       {
+        "_id": "gk011gj",
         "name": "Gulab Jamun",
         "price": 80,
         "category": "Desserts",
@@ -323,6 +334,7 @@
         "available": true
       },
       {
+        "_id": "gk012ic",
         "name": "Ice Cream",
         "price": 60,
         "category": "Desserts",
@@ -331,6 +343,7 @@
         "available": true
       },
       {
+        "_id": "gk013fls",
         "name": "Fresh Lime Soda",
         "price": 50,
         "category": "Drinks",
@@ -339,6 +352,7 @@
         "available": true
       },
       {
+        "_id": "gk014ls",
         "name": "Lassi",
         "price": 70,
         "category": "Drinks",
