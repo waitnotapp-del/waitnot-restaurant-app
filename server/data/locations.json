@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "mj0e4m3780h922esqv",
+    "latitude": 12.846288,
+    "longitude": 74.954353,
+    "address": null,
+    "userId": null,
+    "sessionId": "mj0e2kffs1ir8i5dpr",
+    "timestamp": "2025-12-10T19:16:44.369Z",
+    "source": "user_detection",
+    "createdAt": "2025-12-10T19:16:44.371Z",
+    "updatedAt": "2025-12-10T19:16:44.371Z"
+  },
+  {
+    "_id": "mj0e4z4g8nz0tet63bf",
+    "latitude": 12.846288,
+    "longitude": 74.954353,
+    "address": null,
+    "userId": null,
+    "sessionId": "mj0e2kffs1ir8i5dpr",
+    "timestamp": "2025-12-10T19:17:01.263Z",
+    "source": "user_detection",
+    "createdAt": "2025-12-10T19:17:01.264Z",
+    "updatedAt": "2025-12-10T19:17:01.264Z"
+  }
+]

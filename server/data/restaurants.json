@@ -146,7 +146,10 @@
       }
     ],
     "createdAt": "2025-11-24T16:05:20.305Z",
-    "updatedAt": "2025-11-24T16:05:20.306Z"
+    "updatedAt": "2025-12-10T19:16:37.071Z",
+    "latitude": 12.846288,
+    "longitude": 74.954353,
+    "deliveryRadiusKm": 5
   },
   {
     "_id": "midc8uax60xh1mcd1d",
