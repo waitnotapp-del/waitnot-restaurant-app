@@ -12,6 +12,8 @@ router.post('/chat', async (req, res) => {
     const { message, userId = 'anonymous', sessionId } = req.body;
     const userMessage = message.toLowerCase().trim();
     
+    console.log(`🎤 Voice Chat - User: ${userId}, Session: ${sessionId}, Message: "${message}"`);
+    
     // Get or create conversation state
     const stateKey = `${userId}_${sessionId || 'default'}`;
     let state = conversationStates.get(stateKey) || {
@@ -21,6 +23,8 @@ router.post('/chat', async (req, res) => {
       quantity: null,
       context: {}
     };
+    
+    console.log(`📊 Current State: ${JSON.stringify(state)}`);
 
     let response = '';
     let suggestions = [];
@@ -249,6 +253,9 @@ router.post('/chat', async (req, res) => {
 
     // Update conversation state
     conversationStates.set(stateKey, state);
+    
+    console.log(`✅ Final State: ${JSON.stringify(state)}`);
+    console.log(`📝 Response: "${response}"`);
 
     res.json({
       response,
@@ -281,14 +288,55 @@ function extractFoodItems(message) {
     'cake', 'pastry', 'coffee', 'tea', 'juice', 'lassi', 'shake'
   ];
   
+  // Pizza-related keywords that should map to pizza
+  const pizzaKeywords = ['pepperoni', 'margherita', 'cheese pizza', 'pizza slice'];
+  
+  // Burger-related keywords
+  const burgerKeywords = ['cheeseburger', 'hamburger', 'veggie burger', 'chicken burger'];
+  
+  // Other specific dish keywords
+  const specificDishes = {
+    'butter chicken': 'chicken',
+    'chicken tikka': 'chicken',
+    'paneer tikka': 'paneer',
+    'fried rice': 'rice',
+    'biryani rice': 'biryani',
+    'chicken biryani': 'biryani',
+    'veg biryani': 'biryani'
+  };
+  
   const found = [];
+  
+  // Check for pizza-related items
+  pizzaKeywords.forEach(keyword => {
+    if (message.includes(keyword)) {
+      found.push('pizza');
+    }
+  });
+  
+  // Check for burger-related items
+  burgerKeywords.forEach(keyword => {
+    if (message.includes(keyword)) {
+      found.push('burger');
+    }
+  });
+  
+  // Check for specific dishes
+  Object.keys(specificDishes).forEach(dish => {
+    if (message.includes(dish)) {
+      found.push(specificDishes[dish]);
+    }
+  });
+  
+  // Check for general food keywords
   foodKeywords.forEach(keyword => {
     if (message.includes(keyword)) {
       found.push(keyword);
     }
   });
   
-  return found;
+  // Remove duplicates
+  return [...new Set(found)];
 }
 
 function containsFoodItem(message) {

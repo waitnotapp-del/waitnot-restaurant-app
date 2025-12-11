@@ -65,6 +65,13 @@ export default function AIAssistant() {
   const [wakeWordDetected, setWakeWordDetected] = useState(false);
   const [isRecognitionRunning, setIsRecognitionRunning] = useState(false);
   const [recognitionAttempts, setRecognitionAttempts] = useState(0);
+  const [conversationState, setConversationState] = useState({
+    step: 'initial',
+    foodItem: null,
+    isVeg: null,
+    quantity: null,
+    sessionId: null
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState({
     rate: 1.0,
@@ -691,13 +698,30 @@ export default function AIAssistant() {
 
     // Use structured conversation flow for food ordering
     try {
+      // Initialize session ID if not exists
+      if (!conversationState.sessionId) {
+        const newSessionId = `session_${Date.now().toString().slice(-6)}_${Math.random().toString(36).slice(2, 8)}`;
+        setConversationState(prev => ({ ...prev, sessionId: newSessionId }));
+      }
+      
       const response = await axios.post('/api/voice/chat', {
         message: message,
         userId: 'user123', // You can get this from auth context
-        sessionId: Date.now().toString() // Simple session management
+        sessionId: conversationState.sessionId || `temp_${Date.now()}`
       });
 
-      const { response: aiResponse, suggestions, restaurants: foundRestaurants } = response.data;
+      const { response: aiResponse, suggestions, restaurants: foundRestaurants, conversationState: newState } = response.data;
+      
+      // Update conversation state
+      if (newState) {
+        setConversationState(prev => ({
+          ...prev,
+          step: newState.step,
+          foodItem: newState.foodItem,
+          isVeg: newState.isVeg,
+          quantity: newState.quantity
+        }));
+      }
       
       // Update restaurants if found
       if (foundRestaurants && foundRestaurants.length > 0) {
@@ -1262,6 +1286,16 @@ export default function AIAssistant() {
 
   const updateVoiceSettings = (newSettings) => {
     setVoiceSettings(prev => ({ ...prev, ...newSettings }));
+  };
+
+  const resetConversation = () => {
+    setConversationState({
+      step: 'initial',
+      foodItem: null,
+      isVeg: null,
+      quantity: null,
+      sessionId: `session_${Date.now().toString().slice(-6)}_${Math.random().toString(36).slice(2, 8)}`
+    });
   };
 
   return (
