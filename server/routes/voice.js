@@ -101,13 +101,45 @@ router.post('/chat', async (req, res) => {
         if (searchResults.length > 0) {
           restaurants = searchResults;
           const topRestaurant = searchResults[0];
-          response += `\n\nFound ${searchResults.length} restaurants near you offering ${state.isVeg ? 'vegetarian' : 'non-vegetarian'} ${state.foodItem}. Top result: ${topRestaurant.name} — rating ${topRestaurant.rating}/5. Would you like to see menu, place an order, or hear more options?`;
+          const dietaryText = state.isVeg !== null ? (state.isVeg ? 'vegetarian' : 'non-vegetarian') : '';
+          
+          response += `\n\nFound ${searchResults.length} restaurant${searchResults.length > 1 ? 's' : ''} offering ${dietaryText} ${state.foodItem}:\n\n`;
+          
+          // Show top 3 restaurants with their menu items
+          searchResults.slice(0, 3).forEach((restaurant, index) => {
+            response += `${index + 1}. ${restaurant.name} ⭐ ${restaurant.rating}/5\n`;
+            if (restaurant.menu && restaurant.menu.length > 0) {
+              response += `   ${restaurant.menu.slice(0, 2).map(item => `${item.name} - ₹${item.price}`).join(', ')}\n`;
+            }
+            response += `   🕐 ${restaurant.deliveryTime}\n\n`;
+          });
+          
+          response += `Would you like to see full menu, place an order, or hear more options?`;
           suggestions = ['See Menu', 'Place Order', 'More Options', 'Start Over'];
           state.step = 'show_results';
         } else {
-          response += `\n\nSorry — I can't find ${state.foodItem} in nearby restaurants right now.`;
-          suggestions = ['Try Another Food', 'Show All Restaurants', 'Start Over'];
-          state.step = 'no_results';
+          // Try searching without dietary restriction
+          const allResults = await searchRestaurants(state.foodItem, null);
+          if (allResults.length > 0) {
+            response += `\n\nI found ${allResults.length} restaurant${allResults.length > 1 ? 's' : ''} with ${state.foodItem}, but they might have both vegetarian and non-vegetarian options. Would you like to see them?`;
+            restaurants = allResults;
+            suggestions = ['Yes, Show Them', 'Try Another Food', 'Start Over'];
+            state.step = 'show_results';
+          } else {
+            response += `\n\nSorry — I couldn't find any ${state.foodItem} in our current restaurants. Try browsing all restaurants or search for similar items like:`;
+            
+            // Suggest similar items
+            const suggestions_text = [
+              '• Pizza → Italian cuisine',
+              '• Biryani → Indian cuisine', 
+              '• Noodles → Chinese cuisine',
+              '• Burgers → Fast food'
+            ];
+            response += `\n\n${suggestions_text.join('\n')}\n\nWhat else can I help you find?`;
+            
+            suggestions = ['Try Another Food', 'Show All Restaurants', 'Start Over'];
+            state.step = 'no_results';
+          }
         }
       } else {
         response = "I didn't catch the quantity — how many would you like?";
@@ -235,27 +267,39 @@ async function searchRestaurants(foodItem, isVeg) {
     const restaurants = await restaurantDB.findAll();
     
     const matchingRestaurants = restaurants.filter(restaurant => {
-      return restaurant.menu.some(menuItem => 
-        menuItem.name.toLowerCase().includes(foodItem.toLowerCase()) &&
-        menuItem.isVeg === isVeg &&
-        menuItem.available
-      );
+      return restaurant.menu && restaurant.menu.some(menuItem => {
+        // More flexible matching - check if food item is in menu item name or restaurant cuisine
+        const itemNameMatch = menuItem.name.toLowerCase().includes(foodItem.toLowerCase());
+        const cuisineMatch = restaurant.cuisine && restaurant.cuisine.some(c => 
+          c.toLowerCase().includes(foodItem.toLowerCase())
+        );
+        
+        // Check if dietary preference matches (if specified)
+        const dietaryMatch = isVeg !== null ? menuItem.isVeg === isVeg : true;
+        
+        return (itemNameMatch || cuisineMatch) && dietaryMatch && menuItem.available !== false;
+      });
     });
     
     // Sort by rating (descending)
     return matchingRestaurants
       .sort((a, b) => (b.rating || 4.0) - (a.rating || 4.0))
       .map(restaurant => ({
-        id: restaurant.id,
+        id: restaurant._id || restaurant.id,
         name: restaurant.name,
         rating: restaurant.rating || 4.0,
         deliveryTime: restaurant.deliveryTime,
         cuisine: restaurant.cuisine,
-        menu: restaurant.menu.filter(item => 
-          item.name.toLowerCase().includes(foodItem.toLowerCase()) &&
-          item.isVeg === isVeg &&
-          item.available
-        )
+        address: restaurant.address,
+        menu: restaurant.menu.filter(item => {
+          const itemNameMatch = item.name.toLowerCase().includes(foodItem.toLowerCase());
+          const cuisineMatch = restaurant.cuisine && restaurant.cuisine.some(c => 
+            c.toLowerCase().includes(foodItem.toLowerCase())
+          );
+          const dietaryMatch = isVeg !== null ? item.isVeg === isVeg : true;
+          
+          return (itemNameMatch || cuisineMatch) && dietaryMatch && item.available !== false;
+        })
       }));
   } catch (error) {
     console.error('Error searching restaurants:', error);

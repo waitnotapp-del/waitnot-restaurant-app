@@ -707,9 +707,54 @@ export default function AIAssistant() {
       return aiResponse;
     } catch (error) {
       console.error('Voice API error:', error);
-      // Fallback to simple responses
-      return getSimpleAIResponse(message, lowerMessage);
+      // Fallback to simple responses with food search
+      return getSimpleAIResponseWithSearch(message, lowerMessage);
     }
+  };
+
+  const getSimpleAIResponseWithSearch = async (message, lowerMessage) => {
+    // Handle food requests with basic search
+    if (lowerMessage.includes('want') || lowerMessage.includes('get me') || lowerMessage.includes('order')) {
+      const foodItems = ['burger', 'pizza', 'biryani', 'chicken', 'pasta', 'noodles'];
+      const foundFood = foodItems.find(food => lowerMessage.includes(food));
+      
+      if (foundFood) {
+        // Search restaurants for this food item
+        const matchingRestaurants = restaurants.filter(restaurant => 
+          restaurant.menu && restaurant.menu.some(item => 
+            item.name.toLowerCase().includes(foundFood) && item.available !== false
+          )
+        );
+        
+        if (matchingRestaurants.length > 0) {
+          let response = `🍽️ Found ${foundFood.toUpperCase()} at ${matchingRestaurants.length} restaurant${matchingRestaurants.length > 1 ? 's' : ''}:\n\n`;
+          
+          matchingRestaurants.slice(0, 3).forEach((restaurant, index) => {
+            response += `${index + 1}. ${restaurant.name}\n`;
+            response += `⭐ ${restaurant.rating}/5 | 🕐 ${restaurant.deliveryTime}\n`;
+            
+            const foodMenuItems = restaurant.menu.filter(item => 
+              item.name.toLowerCase().includes(foundFood) && item.available !== false
+            );
+            
+            if (foodMenuItems.length > 0) {
+              response += `${foundFood.toUpperCase()} Items:\n`;
+              foodMenuItems.slice(0, 2).forEach(item => {
+                response += `• ${item.name} - ₹${item.price}\n`;
+              });
+            }
+            response += '\n';
+          });
+          
+          response += `🛒 To place an order, just tell me which restaurant and items you'd like!`;
+          return response;
+        } else {
+          return `🔍 I couldn't find any ${foundFood} items in our current restaurants. Try browsing all restaurants or search for similar items like:\n\n• Pizza → Italian cuisine\n• Biryani → Indian cuisine\n• Noodles → Chinese cuisine\n• Burgers → Fast food\n\nWhat else can I help you find?`;
+        }
+      }
+    }
+    
+    return getSimpleAIResponse(message, lowerMessage);
   };
 
   const getSimpleAIResponse = (message, lowerMessage) => {
