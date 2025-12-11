@@ -23,6 +23,7 @@ const NearbyRestaurants = lazy(() => import('./components/NearbyRestaurants'));
 const UserLogin = lazy(() => import('./pages/UserLogin'));
 const OrderHistory = lazy(() => import('./pages/OrderHistory'));
 const Profile = lazy(() => import('./pages/Profile'));
+const VoiceTest = lazy(() => import('./pages/VoiceTest'));
 
 // Loading component for lazy-loaded routes
 const PageLoader = () => (
@@ -67,6 +68,7 @@ function AppContent() {
               <Route path="/orders" element={<><Navbar /><OrderHistory /><BottomNav /></>} />
               <Route path="/profile" element={<><Navbar /><Profile /><BottomNav /></>} />
               <Route path="/settings" element={<><Navbar /><Settings /><BottomNav /></>} />
+              <Route path="/voice-test" element={<><Navbar /><VoiceTest /><BottomNav /></>} />
             </Routes>
           </Suspense>
         </div>

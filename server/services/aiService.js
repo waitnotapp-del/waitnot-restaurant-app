@@ -69,6 +69,59 @@ class AIService {
     }
   }
 
+  async generateResponseWithPrompt(userMessage, customSystemPrompt) {
+    if (!this.apiKey) {
+      return this.getWaiterFallbackResponse(userMessage);
+    }
+
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/chat/completions`,
+        {
+          model: this.model,
+          messages: [
+            {
+              role: 'system',
+              content: customSystemPrompt
+            },
+            {
+              role: 'user',
+              content: userMessage
+            }
+          ],
+          max_tokens: 800,
+          temperature: 0.7,
+          stream: false
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://waitnot-app.com',
+            'X-Title': 'WaitNot Waiter Assistant'
+          },
+          timeout: 15000 // 15 second timeout for waiter responses
+        }
+      );
+
+      const aiResponse = response.data.choices[0]?.message?.content;
+      
+      if (!aiResponse) {
+        console.warn('Empty response from OpenRouter API for waiter');
+        return this.getWaiterFallbackResponse(userMessage);
+      }
+
+      console.log('✅ Waiter AI Response generated successfully');
+      return aiResponse.trim();
+
+    } catch (error) {
+      console.error('❌ Waiter AI Error:', error.response?.data || error.message);
+      
+      // Return waiter-specific fallback response on error
+      return this.getWaiterFallbackResponse(userMessage);
+    }
+  }
+
   buildSystemPrompt(context) {
     const { restaurants = [], userLocation, conversationHistory = [] } = context;
     
@@ -173,6 +226,46 @@ CURRENT CONTEXT:`;
 
     // Default response
     return `🍽️ I'd love to help you find something delicious! We have ${restaurants.length} restaurants available. Try asking for specific foods like "pizza", "burger", or "biryani", or just tell me what you're in the mood for! 😊`;
+  }
+
+  getWaiterFallbackResponse(userMessage) {
+    const lowerMessage = userMessage.toLowerCase();
+
+    // Handle food requests
+    if (lowerMessage.includes('burger')) {
+      return "Veg or non-veg burger?";
+    }
+    
+    if (lowerMessage.includes('pizza')) {
+      return "Veg or non-veg pizza?";
+    }
+    
+    if (lowerMessage.includes('biryani')) {
+      return "Veg or non-veg biryani?";
+    }
+
+    // Handle dietary preferences
+    if (lowerMessage.includes('veg') && !lowerMessage.includes('non')) {
+      return "How many would you like?";
+    }
+    
+    if (lowerMessage.includes('non-veg') || lowerMessage.includes('non veg')) {
+      return "How many would you like?";
+    }
+
+    // Handle quantities
+    const numbers = lowerMessage.match(/\d+/);
+    if (numbers) {
+      return "I need your location to find nearby restaurants. Could you share your location?";
+    }
+
+    // Handle greetings
+    if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+      return "Hello! What would you like to order today?";
+    }
+
+    // Default response
+    return "What would you like to eat today?";
   }
 
   async generateFoodRecommendations(preferences = {}) {
