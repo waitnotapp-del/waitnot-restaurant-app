@@ -6,44 +6,105 @@ import './index.css'
 import './i18n'
 import axios from 'axios'
 import { API_URL } from './config'
+import { BundleOptimizer, PerformanceMonitor } from './utils/performanceOptimizer'
 
-// Configure axios base URL - can be overridden in Settings
+// Performance monitoring
+const renderMeasure = PerformanceMonitor.measureRender('App');
+
+// Preconnect to external domains for faster loading
+BundleOptimizer.preconnectDomain('https://waitnot-backend-42e3.onrender.com');
+BundleOptimizer.preconnectDomain('https://fonts.googleapis.com');
+BundleOptimizer.preconnectDomain('https://fonts.gstatic.com');
+
+// Configure axios with performance optimizations
 const savedApiUrl = localStorage.getItem('apiUrl') || 'https://waitnot-backend-42e3.onrender.com/api'
 axios.defaults.baseURL = savedApiUrl.replace('/api', '')
-axios.defaults.timeout = 60000 // 60 seconds for video uploads
+axios.defaults.timeout = 30000 // Reduced from 60s to 30s for better UX
+axios.defaults.headers.common['Accept'] = 'application/json'
+axios.defaults.headers.common['Content-Type'] = 'application/json'
+
+// Enable HTTP/2 and compression
+axios.defaults.headers.common['Accept-Encoding'] = 'gzip, deflate, br'
 
 console.log('=== WaitNot App Starting ===')
 console.log('API Base URL:', axios.defaults.baseURL)
 console.log('Full API URL with /api:', axios.defaults.baseURL + '/api')
 console.log('Environment:', import.meta.env.MODE)
 
-// Add axios interceptor for debugging
+// Optimized axios interceptors with performance monitoring
 axios.interceptors.request.use(
   (config) => {
-    console.log('API Request:', config.method?.toUpperCase(), config.url)
-    return config
+    // Add performance timing
+    config.metadata = { startTime: performance.now() };
+    
+    // Add cache headers for GET requests
+    if (config.method === 'get') {
+      config.headers['Cache-Control'] = 'max-age=300'; // 5 minutes
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log('API Request:', config.method?.toUpperCase(), config.url);
+    }
+    return config;
   },
   (error) => {
-    console.error('Request Error:', error)
-    return Promise.reject(error)
+    console.error('Request Error:', error);
+    return Promise.reject(error);
   }
-)
+);
 
 axios.interceptors.response.use(
   (response) => {
-    console.log('API Response:', response.status, response.config.url)
-    return response
+    // Calculate request duration
+    const duration = performance.now() - response.config.metadata.startTime;
+    
+    if (import.meta.env.DEV) {
+      console.log(`API Response: ${response.status} ${response.config.url} (${duration.toFixed(2)}ms)`);
+    }
+    
+    // Log slow requests
+    if (duration > 2000) {
+      console.warn(`Slow API request: ${response.config.url} took ${duration.toFixed(2)}ms`);
+    }
+    
+    return response;
   },
   (error) => {
-    console.error('Response Error:', error.message, error.config?.url)
-    return Promise.reject(error)
+    const duration = error.config?.metadata ? 
+      performance.now() - error.config.metadata.startTime : 0;
+    
+    console.error(`Response Error: ${error.message} ${error.config?.url} (${duration.toFixed(2)}ms)`);
+    return Promise.reject(error);
   }
-)
+);
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+// Optimize React rendering
+const root = ReactDOM.createRoot(document.getElementById('root'));
+
+// Use concurrent features for better performance
+root.render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-  </React.StrictMode>,
-)
+  </React.StrictMode>
+);
+
+// Complete render measurement
+renderMeasure();
+
+// Initialize performance monitoring
+if (import.meta.env.DEV) {
+  // Log performance metrics after initial render
+  setTimeout(() => {
+    const metrics = PerformanceMonitor.getMetrics();
+    if (metrics) {
+      console.log('🚀 Performance Metrics:', {
+        'DOM Content Loaded': `${metrics.domContentLoaded.toFixed(2)}ms`,
+        'Load Complete': `${metrics.loadComplete.toFixed(2)}ms`,
+        'First Paint': `${metrics.firstPaint.toFixed(2)}ms`,
+        'First Contentful Paint': `${metrics.firstContentfulPaint.toFixed(2)}ms`
+      });
+    }
+  }, 2000);
+}

@@ -63,6 +63,8 @@ export default function AIAssistant() {
   const [transcript, setTranscript] = useState('');
   const [isWakeWordActive, setIsWakeWordActive] = useState(true);
   const [wakeWordDetected, setWakeWordDetected] = useState(false);
+  const [isRecognitionRunning, setIsRecognitionRunning] = useState(false);
+  const [recognitionAttempts, setRecognitionAttempts] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState({
     rate: 1.0,
@@ -175,101 +177,177 @@ export default function AIAssistant() {
     }
   }, []);
 
-  // Initialize wake word detection
+  // Initialize wake word detection - FIXED VERSION
   useEffect(() => {
+    // Cleanup any existing recognition first
+    if (wakeWordRecognitionRef.current) {
+      try {
+        wakeWordRecognitionRef.current.stop();
+        wakeWordRecognitionRef.current = null;
+      } catch (e) {
+        console.log('Cleanup wake word recognition:', e.message);
+      }
+    }
+
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      wakeWordRecognitionRef.current = new SpeechRecognition();
-      wakeWordRecognitionRef.current.continuous = true;
-      wakeWordRecognitionRef.current.interimResults = true;
-      wakeWordRecognitionRef.current.lang = 'en-US';
+      
+      try {
+        wakeWordRecognitionRef.current = new SpeechRecognition();
+        wakeWordRecognitionRef.current.continuous = true;
+        wakeWordRecognitionRef.current.interimResults = true;
+        wakeWordRecognitionRef.current.lang = 'en-US';
 
-      wakeWordRecognitionRef.current.onresult = (event) => {
-        const last = event.results.length - 1;
-        const transcript = event.results[last][0].transcript.toLowerCase();
-        
-        console.log('Wake word listening:', transcript);
-        
-        // Check for wake word "hey waiter"
-        if (transcript.includes('hey waiter') || 
-            transcript.includes('hey walter') || 
-            transcript.includes('a waiter') ||
-            transcript.includes('hey writer')) {
-          console.log('Wake word detected!');
-          setWakeWordDetected(true);
-          setIsOpen(true);
+        wakeWordRecognitionRef.current.onresult = (event) => {
+          const last = event.results.length - 1;
+          const transcript = event.results[last][0].transcript.toLowerCase();
           
-          // Stop wake word detection temporarily
-          wakeWordRecognitionRef.current?.stop();
-          
-          // Speak confirmation
-          speak("Yes, I'm here! How can I help you?");
-          
-          // Add welcome message
-          addMessage('ai', "I heard you! What would you like to know?");
-          
-          // Restart wake word detection after 30 seconds
-          setTimeout(() => {
-            if (!isOpen) {
-              startWakeWordDetection();
+          // Check for wake word "hey waiter"
+          if (transcript.includes('hey waiter') || 
+              transcript.includes('hey walter') || 
+              transcript.includes('a waiter') ||
+              transcript.includes('hey writer')) {
+            console.log('✅ Wake word detected!');
+            setWakeWordDetected(true);
+            setIsOpen(true);
+            setIsRecognitionRunning(false);
+            setRecognitionAttempts(0);
+            
+            // Stop wake word detection immediately
+            try {
+              wakeWordRecognitionRef.current?.stop();
+            } catch (e) {
+              console.log('Stop wake word recognition:', e.message);
             }
-          }, 30000);
-        }
-      };
+            
+            // Speak confirmation
+            speak("Yes, I'm here! How can I help you?");
+            
+            // Add welcome message
+            addMessage('ai', "I heard you! What would you like to know?");
+          }
+        };
 
-      wakeWordRecognitionRef.current.onerror = (event) => {
-        console.error('Wake word recognition error:', event.error);
-        // Restart on error (except if permission denied)
-        if (event.error !== 'not-allowed' && event.error !== 'no-speech') {
-          setTimeout(() => {
-            if (isWakeWordActive && !isOpen) {
-              startWakeWordDetection();
-            }
-          }, 1000);
-        }
-      };
+        wakeWordRecognitionRef.current.onerror = (event) => {
+          console.error('Wake word recognition error:', event.error);
+          setIsRecognitionRunning(false);
+          
+          // Don't restart on certain errors to prevent loops
+          if (event.error === 'not-allowed' || 
+              event.error === 'service-not-allowed' ||
+              event.error === 'aborted') {
+            console.log('Wake word detection stopped due to:', event.error);
+            setRecognitionAttempts(5); // Stop trying
+            return;
+          }
+        };
 
-      wakeWordRecognitionRef.current.onend = () => {
-        // Restart wake word detection if still active
-        if (isWakeWordActive && !isOpen) {
-          setTimeout(() => {
-            startWakeWordDetection();
-          }, 500);
-        }
-      };
+        wakeWordRecognitionRef.current.onstart = () => {
+          setIsRecognitionRunning(true);
+          console.log('Wake word recognition started successfully');
+        };
+
+        wakeWordRecognitionRef.current.onend = () => {
+          setIsRecognitionRunning(false);
+          
+          // Only restart if conditions are met and we haven't exceeded attempts
+          if (isWakeWordActive && 
+              !isOpen && 
+              wakeWordRecognitionRef.current && 
+              recognitionAttempts < 5) {
+            setTimeout(() => {
+              if (!isRecognitionRunning && !isOpen) {
+                startWakeWordDetection();
+              }
+            }, 3000); // Longer delay to prevent rapid restarts
+          }
+        };
+      } catch (error) {
+        console.error('Failed to initialize wake word detection:', error);
+      }
     }
 
     return () => {
-      wakeWordRecognitionRef.current?.stop();
+      // Proper cleanup
+      if (wakeWordRecognitionRef.current) {
+        try {
+          wakeWordRecognitionRef.current.stop();
+          wakeWordRecognitionRef.current = null;
+        } catch (e) {
+          console.log('Cleanup on unmount:', e.message);
+        }
+      }
     };
-  }, [isOpen, isWakeWordActive]);
+  }, [isWakeWordActive]); // Remove isOpen dependency to prevent loops
 
-  // Start wake word detection on mount
+  // Start wake word detection on mount - with proper state management
   useEffect(() => {
-    if (isWakeWordActive && !isOpen) {
-      startWakeWordDetection();
+    if (isWakeWordActive && !isOpen && !isRecognitionRunning) {
+      // Add delay to ensure proper initialization
+      const timer = setTimeout(() => {
+        if (!isRecognitionRunning && !isOpen) {
+          startWakeWordDetection();
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timer);
     }
     
     return () => {
-      wakeWordRecognitionRef.current?.stop();
+      if (wakeWordRecognitionRef.current && isRecognitionRunning) {
+        try {
+          wakeWordRecognitionRef.current.stop();
+          setIsRecognitionRunning(false);
+        } catch (e) {
+          console.log('Cleanup error:', e.message);
+        }
+      }
     };
-  }, []);
+  }, [isWakeWordActive, isOpen, isRecognitionRunning]);
 
   const startWakeWordDetection = () => {
-    if (wakeWordRecognitionRef.current && !isOpen) {
-      try {
-        wakeWordRecognitionRef.current.start();
-        console.log('👂 Wake word detection started - Say "Hey Waiter"');
-      } catch (error) {
-        console.error('Failed to start wake word detection:', error);
+    // Prevent multiple instances and limit attempts
+    if (!wakeWordRecognitionRef.current || 
+        isOpen || 
+        !isWakeWordActive || 
+        isRecognitionRunning ||
+        recognitionAttempts >= 5) {
+      return;
+    }
+
+    try {
+      console.log('👂 Wake word detection started - Say "Hey Waiter"');
+      setIsRecognitionRunning(true);
+      setRecognitionAttempts(prev => prev + 1);
+      wakeWordRecognitionRef.current.start();
+    } catch (error) {
+      console.error('Failed to start wake word detection:', error);
+      setIsRecognitionRunning(false);
+      
+      // Stop trying if we get "already started" error
+      if (error.message && error.message.includes('already started')) {
+        console.log('Recognition already active, stopping attempts');
+        return;
       }
+      
+      // Reset attempts after a longer delay
+      setTimeout(() => {
+        setRecognitionAttempts(0);
+      }, 10000); // Reset after 10 seconds
     }
   };
 
   const stopWakeWordDetection = () => {
-    if (wakeWordRecognitionRef.current) {
-      wakeWordRecognitionRef.current.stop();
-      console.log('🛑 Wake word detection stopped');
+    if (wakeWordRecognitionRef.current && isRecognitionRunning) {
+      try {
+        wakeWordRecognitionRef.current.stop();
+        setIsRecognitionRunning(false);
+        setRecognitionAttempts(0);
+        console.log('🛑 Wake word detection stopped');
+      } catch (error) {
+        console.error('Error stopping wake word detection:', error);
+        setIsRecognitionRunning(false);
+      }
     }
   };
 
@@ -1182,7 +1260,12 @@ export default function AIAssistant() {
                   onClick={() => {
                     setIsOpen(false);
                     setShowSettings(false);
-                    setTimeout(() => startWakeWordDetection(), 500);
+                    setRecognitionAttempts(0); // Reset attempts
+                    setTimeout(() => {
+                      if (isWakeWordActive && !isRecognitionRunning) {
+                        startWakeWordDetection();
+                      }
+                    }, 1000);
                   }}
                   className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
                   aria-label="Close AI Assistant"
@@ -1202,9 +1285,12 @@ export default function AIAssistant() {
                 </div>
                 <button
                   onClick={() => {
-                    setIsWakeWordActive(!isWakeWordActive);
-                    if (!isWakeWordActive) {
-                      startWakeWordDetection();
+                    const newState = !isWakeWordActive;
+                    setIsWakeWordActive(newState);
+                    setRecognitionAttempts(0); // Reset attempts
+                    
+                    if (newState && !isRecognitionRunning) {
+                      setTimeout(() => startWakeWordDetection(), 1000);
                     } else {
                       stopWakeWordDetection();
                     }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, MapPin, Clock, Star, ScanLine, Navigation } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,9 @@ import axios from 'axios';
 import { convertNumerals } from '../utils/numberFormatter';
 import { getUserLocation } from '../utils/geolocation';
 import { useRestaurantCache } from '../utils/restaurantCache';
+import { useDebounce, useOptimizedAPI, usePerformanceOptimization } from '../utils/performanceOptimizer';
+import OptimizedImage from '../components/OptimizedImage';
+import VirtualizedList from '../components/VirtualizedList';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
@@ -24,8 +27,22 @@ export default function Home() {
   const [nearbyCount, setNearbyCount] = useState(0);
   const [showLocationStatus, setShowLocationStatus] = useState(false);
   
-  // Performance optimization
+  // Performance optimizations
   const restaurantCache = useRestaurantCache();
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const { PerformanceMonitor } = usePerformanceOptimization();
+
+  // Memoized filtered restaurants for better performance
+  const filteredRestaurants = useMemo(() => {
+    if (!debouncedSearchQuery) return restaurants;
+    
+    const query = debouncedSearchQuery.toLowerCase();
+    return restaurants.filter(restaurant => 
+      restaurant.name?.toLowerCase().includes(query) ||
+      restaurant.cuisine?.some(c => c.toLowerCase().includes(query)) ||
+      restaurant.description?.toLowerCase().includes(query)
+    );
+  }, [restaurants, debouncedSearchQuery]);
 
   useEffect(() => {
     // Preload restaurants in background for faster access
@@ -118,9 +135,9 @@ export default function Home() {
   };
 
   const handleSearch = () => {
-    if (searchQuery.trim()) {
+    if (debouncedSearchQuery.trim()) {
       // If searching, show all restaurants matching the query
-      fetchRestaurants(searchQuery);
+      fetchRestaurants(debouncedSearchQuery);
     } else if (userLocation) {
       // If no search query but have location, show nearby restaurants
       fetchNearbyRestaurants(userLocation.latitude, userLocation.longitude);
@@ -129,6 +146,13 @@ export default function Home() {
       fetchRestaurants();
     }
   };
+
+  // Auto-search when debounced query changes
+  useEffect(() => {
+    if (debouncedSearchQuery !== searchQuery) {
+      handleSearch();
+    }
+  }, [debouncedSearchQuery]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -396,61 +420,28 @@ export default function Home() {
         )}
       </div>
 
-      {/* Restaurant Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {restaurants.map((restaurant) => (
-          <Link
-            key={restaurant._id}
-            to={`/restaurant/${restaurant._id}`}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 overflow-hidden hover:shadow-xl dark:hover:shadow-gray-900 transition-all border border-transparent dark:border-gray-700"
-          >
-            <div className="h-40 sm:h-48 bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
-              {restaurant.image ? (
-                <img src={restaurant.image} alt={restaurant.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-white text-3xl sm:text-4xl font-bold">{restaurant.name[0]}</span>
-              )}
-            </div>
-            
-            <div className="p-3 sm:p-4">
-              <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-1 sm:mb-2 transition-colors">{restaurant.name}</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 transition-colors">{restaurant.cuisine?.join(', ')}</p>
-              
-              <div className="flex items-center justify-between text-xs sm:text-sm flex-wrap gap-2">
-                <div className="flex items-center gap-1 text-yellow-500 dark:text-yellow-400">
-                  <Star size={14} className="sm:w-4 sm:h-4" fill="currentColor" />
-                  <span className="font-semibold">{convertNumerals(restaurant.rating, i18n.language)}</span>
-                </div>
-                
-                <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400 transition-colors">
-                  <Clock size={14} className="sm:w-4 sm:h-4" />
-                  <span className="whitespace-nowrap">
-                    {(() => {
-                      const time = restaurant.deliveryTime || '30-40 min';
-                      const timeWithoutMin = time.replace(/\s*min\s*$/i, '');
-                      return `${convertNumerals(timeWithoutMin, i18n.language)} ${t('min')}`;
-                    })()}
-                  </span>
-                </div>
-                
-                {restaurant.distanceKm ? (
-                  <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 transition-colors">
-                    <MapPin size={14} className="sm:w-4 sm:h-4" />
-                    <span className="whitespace-nowrap">{restaurant.distanceKm} km</span>
-                  </div>
-                ) : restaurant.isDeliveryAvailable && (
-                  <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
-                    <MapPin size={14} className="sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Delivery</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
+      {/* Restaurant Grid - Optimized with virtualization for large lists */}
+      {filteredRestaurants.length > 20 ? (
+        <VirtualizedList
+          items={filteredRestaurants}
+          itemHeight={280}
+          containerHeight={600}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+          renderItem={(restaurant, index) => (
+            <RestaurantCard key={restaurant._id} restaurant={restaurant} />
+          )}
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {filteredRestaurants.map((restaurant) => (
+            <RestaurantCard key={restaurant._id} restaurant={restaurant} />
+          ))}
+        </div>
+      )}
+
       </div>
 
-      {restaurants.length === 0 && !loading && (
+      {filteredRestaurants.length === 0 && !loading && (
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
             <MapPin className="text-gray-400" size={24} />
@@ -482,3 +473,83 @@ export default function Home() {
     </div>
   );
 }
+
+// Optimized Restaurant Card Component
+const RestaurantCard = ({ restaurant }) => {
+  const { t, i18n } = useTranslation();
+  
+  return (
+    <Link
+      to={`/restaurant/${restaurant._id}`}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 overflow-hidden hover:shadow-xl dark:hover:shadow-gray-900 transition-all border border-transparent dark:border-gray-700 transform hover:scale-105"
+    >
+      <div className="h-40 sm:h-48 bg-gradient-to-r from-primary to-secondary flex items-center justify-center relative overflow-hidden">
+        {restaurant.image ? (
+          <OptimizedImage
+            src={restaurant.image}
+            alt={restaurant.name}
+            className="w-full h-full object-cover"
+            width={400}
+            height={200}
+            lazy={true}
+            placeholder="blur"
+          />
+        ) : (
+          <span className="text-white text-3xl sm:text-4xl font-bold">
+            {restaurant.name[0]}
+          </span>
+        )}
+        
+        {/* Quick action overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+          <div className="opacity-0 hover:opacity-100 transition-opacity duration-300">
+            <span className="text-white font-semibold bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm">
+              View Menu
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-3 sm:p-4">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-1 sm:mb-2 transition-colors line-clamp-1">
+          {restaurant.name}
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-1 transition-colors">
+          {restaurant.cuisine?.join(', ')}
+        </p>
+        
+        <div className="flex items-center justify-between text-xs sm:text-sm flex-wrap gap-2">
+          <div className="flex items-center gap-1 text-yellow-500 dark:text-yellow-400">
+            <Star size={14} className="sm:w-4 sm:h-4" fill="currentColor" />
+            <span className="font-semibold">
+              {convertNumerals(restaurant.rating, i18n.language)}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400 transition-colors">
+            <Clock size={14} className="sm:w-4 sm:h-4" />
+            <span className="whitespace-nowrap">
+              {(() => {
+                const time = restaurant.deliveryTime || '30-40 min';
+                const timeWithoutMin = time.replace(/\s*min\s*$/i, '');
+                return `${convertNumerals(timeWithoutMin, i18n.language)} ${t('min')}`;
+              })()}
+            </span>
+          </div>
+          
+          {restaurant.distanceKm ? (
+            <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 transition-colors">
+              <MapPin size={14} className="sm:w-4 sm:h-4" />
+              <span className="whitespace-nowrap">{restaurant.distanceKm} km</span>
+            </div>
+          ) : restaurant.isDeliveryAvailable && (
+            <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
+              <MapPin size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Delivery</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+};

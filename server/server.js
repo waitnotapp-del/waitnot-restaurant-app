@@ -6,6 +6,17 @@ import { Server } from 'socket.io';
 import { initDB, restaurantDB } from './db.js';
 import bcrypt from 'bcryptjs';
 
+// Performance middleware
+import {
+  compressionMiddleware,
+  securityMiddleware,
+  cacheMiddleware,
+  timingMiddleware,
+  rateLimitMiddleware,
+  jsonOptimizationMiddleware,
+  memoryMonitoringMiddleware
+} from './middleware/performanceMiddleware.js';
+
 import restaurantRoutes from './routes/restaurants.js';
 import orderRoutes from './routes/orders.js';
 import reelsRoutes from './routes/reels.js';
@@ -20,12 +31,39 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: { origin: '*' }
+  cors: { origin: '*' },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
-app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increase payload limit for base64 videos
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// Apply performance middleware
+app.use(compressionMiddleware);
+app.use(securityMiddleware);
+app.use(timingMiddleware);
+app.use(rateLimitMiddleware);
+app.use(memoryMonitoringMiddleware);
+app.use(jsonOptimizationMiddleware);
+
+// CORS with optimizations
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://waitnot-restaurant-app.vercel.app', 'https://waitnot-backend-42e3.onrender.com']
+    : true,
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+
+// Body parsing with optimizations
+app.use(express.json({ 
+  limit: '10mb',
+  type: ['application/json', 'text/plain']
+}));
+app.use(express.urlencoded({ 
+  limit: '10mb', 
+  extended: true,
+  parameterLimit: 1000
+}));
 
 // Initialize local database
 await initDB();
@@ -112,15 +150,15 @@ if (existingUsers.length === 0) {
   console.log('✅ Database seeded with sample users');
 }
 
-// Routes
-app.use('/api/restaurants', restaurantRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/reels', reelsRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/locations', locationRoutes);
+// Routes with caching
+app.use('/api/restaurants', cacheMiddleware(600), restaurantRoutes); // 10 minutes cache
+app.use('/api/orders', orderRoutes); // No cache for orders
+app.use('/api/reels', cacheMiddleware(300), reelsRoutes); // 5 minutes cache
+app.use('/api/auth', authRoutes); // No cache for auth
+app.use('/api/payment', paymentRoutes); // No cache for payments
+app.use('/api/users', userRoutes); // No cache for user data
+app.use('/api/reviews', cacheMiddleware(300), reviewRoutes); // 5 minutes cache
+app.use('/api/locations', locationRoutes); // No cache for location tracking
 
 // Socket.IO for real-time orders
 io.on('connection', (socket) => {
