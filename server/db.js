@@ -46,19 +46,34 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-// Restaurant operations
+// Restaurant operations with caching
+let restaurantCache = null;
+let restaurantCacheTime = 0;
+const RESTAURANT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export const restaurantDB = {
   async findAll() {
-    return await readData('restaurants.json');
+    // Use cache if available and not expired
+    if (restaurantCache && (Date.now() - restaurantCacheTime < RESTAURANT_CACHE_TTL)) {
+      return restaurantCache;
+    }
+    
+    const restaurants = await readData('restaurants.json');
+    
+    // Cache the results
+    restaurantCache = restaurants;
+    restaurantCacheTime = Date.now();
+    
+    return restaurants;
   },
   
   async findById(id) {
-    const restaurants = await readData('restaurants.json');
+    const restaurants = await this.findAll(); // Use cached version
     return restaurants.find(r => r._id === id);
   },
   
   async findOne(query) {
-    const restaurants = await readData('restaurants.json');
+    const restaurants = await this.findAll(); // Use cached version
     return restaurants.find(r => {
       for (const key in query) {
         if (r[key] !== query[key]) return false;
@@ -78,6 +93,10 @@ export const restaurantDB = {
     };
     restaurants.push(newRestaurant);
     await writeData('restaurants.json', restaurants);
+    
+    // Invalidate cache
+    restaurantCache = null;
+    
     return newRestaurant;
   },
   
@@ -92,11 +111,15 @@ export const restaurantDB = {
       updatedAt: new Date().toISOString()
     };
     await writeData('restaurants.json', restaurants);
+    
+    // Invalidate cache
+    restaurantCache = null;
+    
     return restaurants[index];
   },
   
   async search(query) {
-    const restaurants = await readData('restaurants.json');
+    const restaurants = await this.findAll(); // Use cached version
     if (!query) return restaurants;
     
     const searchTerm = query.toLowerCase();

@@ -7,6 +7,7 @@ import { useCart } from '../context/CartContext';
 import { translateCategory } from '../utils/translationHelper';
 import { useRestaurantTranslation } from '../hooks/useContentTranslation';
 import { formatCurrency, convertNumerals } from '../utils/numberFormatter';
+import { useRestaurantCache } from '../utils/restaurantCache';
 import { App as CapacitorApp } from '@capacitor/app';
 import Reviews from '../components/Reviews';
 
@@ -18,8 +19,13 @@ export default function RestaurantPage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showReviewsFor, setShowReviewsFor] = useState(null);
   const [itemRatings, setItemRatings] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { addToCart, cart, updateQuantity } = useCart();
   const { translatedContent: translatedRestaurant, isTranslating } = useRestaurantTranslation(restaurant);
+  
+  // Performance optimization
+  const restaurantCache = useRestaurantCache();
 
   useEffect(() => {
     fetchRestaurant();
@@ -45,10 +51,16 @@ export default function RestaurantPage() {
 
   const fetchRestaurant = async () => {
     try {
-      const { data } = await axios.get(`/api/restaurants/${id}`);
+      setLoading(true);
+      setError(null);
+      
+      const data = await restaurantCache.fetchRestaurantById(axios, id);
       setRestaurant(data);
     } catch (error) {
       console.error('Error fetching restaurant:', error);
+      setError('Failed to load restaurant details');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,6 +88,38 @@ export default function RestaurantPage() {
       setSelectedCategory(t('all'));
     }
   }, [translatedRestaurant, t, selectedCategory]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">{t('loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">Error Loading Restaurant</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              fetchRestaurant();
+            }}
+            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!restaurant) return <div className="text-center py-12 text-gray-800 dark:text-white">{t('loading')}</div>;
   if (!translatedRestaurant) return <div className="text-center py-12 text-gray-800 dark:text-white">{t('loading')}</div>;

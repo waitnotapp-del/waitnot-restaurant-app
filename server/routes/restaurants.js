@@ -6,7 +6,13 @@ const router = express.Router();
 // Search restaurants
 router.get('/search', async (req, res) => {
   try {
-    const { q, delivery } = req.query;
+    // Set cache headers for search results
+    res.set({
+      'Cache-Control': 'public, max-age=300', // 5 minutes for search
+      'Content-Type': 'application/json'
+    });
+
+    const { q, delivery, limit, offset } = req.query;
     let restaurants = await restaurantDB.search(q);
     
     if (delivery === 'true') {
@@ -19,8 +25,24 @@ router.get('/search', async (req, res) => {
       return rest;
     });
     
-    res.json(restaurants);
+    // Add pagination
+    if (limit) {
+      const limitNum = parseInt(limit);
+      const offsetNum = parseInt(offset) || 0;
+      restaurants = restaurants.slice(offsetNum, offsetNum + limitNum);
+    }
+    
+    // Add search metadata
+    const response = {
+      restaurants,
+      total: restaurants.length,
+      query: q || '',
+      filters: { delivery: delivery === 'true' }
+    };
+    
+    res.json(restaurants); // Keep backward compatibility
   } catch (error) {
+    console.error('Error searching restaurants:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -28,13 +50,44 @@ router.get('/search', async (req, res) => {
 // Get all restaurants
 router.get('/', async (req, res) => {
   try {
+    // Set cache headers for better performance
+    res.set({
+      'Cache-Control': 'public, max-age=600', // 10 minutes
+      'ETag': `restaurants-${Date.now()}`,
+      'Content-Type': 'application/json'
+    });
+
+    const { limit, offset, fields } = req.query;
     let restaurants = await restaurantDB.findAll();
+    
+    // Remove sensitive data
     restaurants = restaurants.map(r => {
       const { password, ...rest } = r;
       return rest;
     });
+    
+    // Add pagination support
+    if (limit) {
+      const limitNum = parseInt(limit);
+      const offsetNum = parseInt(offset) || 0;
+      restaurants = restaurants.slice(offsetNum, offsetNum + limitNum);
+    }
+    
+    // Field selection for lighter payloads
+    if (fields) {
+      const selectedFields = fields.split(',');
+      restaurants = restaurants.map(r => {
+        const filtered = {};
+        selectedFields.forEach(field => {
+          if (r[field] !== undefined) filtered[field] = r[field];
+        });
+        return { _id: r._id, ...filtered }; // Always include _id
+      });
+    }
+    
     res.json(restaurants);
   } catch (error) {
+    console.error('Error fetching restaurants:', error);
     res.status(500).json({ error: error.message });
   }
 });

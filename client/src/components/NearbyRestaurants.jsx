@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Loader, AlertCircle, Navigation, Star, Clock, History } from 'lucide-react';
 import axios from 'axios';
+import { useRestaurantCache } from '../utils/restaurantCache';
 import SavedLocations from './SavedLocations';
 
 export default function NearbyRestaurants() {
@@ -9,6 +10,9 @@ export default function NearbyRestaurants() {
   const [error, setError] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [showSavedLocations, setShowSavedLocations] = useState(false);
+  
+  // Performance optimization
+  const restaurantCache = useRestaurantCache();
 
   const detectLocation = () => {
     if (!navigator.geolocation) {
@@ -71,12 +75,9 @@ export default function NearbyRestaurants() {
       // Save location data to database
       await saveLocationData(latitude, longitude);
       
-      const response = await axios.post('/api/restaurants/nearby', {
-        latitude,
-        longitude
-      });
-
-      setNearbyRestaurants(response.data.nearbyRestaurants);
+      const response = await restaurantCache.fetchNearbyRestaurants(axios, latitude, longitude);
+      
+      setNearbyRestaurants(response.nearbyRestaurants);
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch nearby restaurants. Please try again.');

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { convertNumerals } from '../utils/numberFormatter';
 import { getUserLocation } from '../utils/geolocation';
+import { useRestaurantCache } from '../utils/restaurantCache';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
@@ -22,8 +23,14 @@ export default function Home() {
   const [isLocationBased, setIsLocationBased] = useState(false);
   const [nearbyCount, setNearbyCount] = useState(0);
   const [showLocationStatus, setShowLocationStatus] = useState(false);
+  
+  // Performance optimization
+  const restaurantCache = useRestaurantCache();
 
   useEffect(() => {
+    // Preload restaurants in background for faster access
+    restaurantCache.preloadRestaurants(axios);
+    
     // Try to detect location automatically on page load
     detectLocationAutomatically();
   }, []);
@@ -67,13 +74,18 @@ export default function Home() {
       setLoading(true);
       setError(null);
       setIsLocationBased(false);
-      console.log('Fetching all restaurants...');
+      console.log('Fetching restaurants...');
       
-      const params = {};
-      if (query) params.q = query;
+      let data;
+      if (query) {
+        // Use cached search
+        data = await restaurantCache.searchRestaurants(axios, query);
+      } else {
+        // Use cached restaurant list
+        data = await restaurantCache.fetchRestaurants(axios);
+      }
       
-      const { data } = await axios.get('/api/restaurants/search', { params });
-      console.log('All restaurants fetched:', data.length);
+      console.log('Restaurants fetched:', data.length);
       setRestaurants(data);
       setNearbyCount(0);
     } catch (error) {
@@ -90,15 +102,12 @@ export default function Home() {
       setError(null);
       console.log('Fetching nearby restaurants...');
       
-      const response = await axios.post('/api/restaurants/nearby', {
-        latitude,
-        longitude
-      });
-
-      setRestaurants(response.data.nearbyRestaurants);
-      setNearbyCount(response.data.nearbyRestaurants.length);
+      const response = await restaurantCache.fetchNearbyRestaurants(axios, latitude, longitude);
+      
+      setRestaurants(response.nearbyRestaurants);
+      setNearbyCount(response.nearbyRestaurants.length);
       setIsLocationBased(true);
-      console.log('Nearby restaurants fetched:', response.data.nearbyRestaurants.length);
+      console.log('Nearby restaurants fetched:', response.nearbyRestaurants.length);
     } catch (error) {
       console.error('Error fetching nearby restaurants:', error);
       // Fallback to all restaurants if nearby fetch fails
