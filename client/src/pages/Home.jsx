@@ -577,13 +577,13 @@ export default function Home() {
           containerHeight={600}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
           renderItem={(restaurant, index) => (
-            <RestaurantCard key={restaurant._id} restaurant={restaurant} />
+            <RestaurantCard key={restaurant._id} restaurant={restaurant} isLocationBased={isLocationBased} />
           )}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredRestaurants.map((restaurant) => (
-            <RestaurantCard key={restaurant._id} restaurant={restaurant} />
+            <RestaurantCard key={restaurant._id} restaurant={restaurant} isLocationBased={isLocationBased} />
           ))}
         </div>
       )}
@@ -623,7 +623,7 @@ export default function Home() {
 }
 
 // Optimized Restaurant Card Component
-const RestaurantCard = ({ restaurant }) => {
+const RestaurantCard = ({ restaurant, isLocationBased = false }) => {
   const { t, i18n } = useTranslation();
   
   return (
