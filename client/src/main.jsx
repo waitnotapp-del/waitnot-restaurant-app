@@ -17,7 +17,7 @@ BundleOptimizer.preconnectDomain('https://fonts.googleapis.com');
 BundleOptimizer.preconnectDomain('https://fonts.gstatic.com');
 
 // Configure axios with performance optimizations
-const CORRECT_BACKEND_URL = 'https://waitnot-backend-42e3.onrender.com';
+const CORRECT_BACKEND_URL = import.meta.env.VITE_API_URL || 'https://waitnot-backend-42e3.onrender.com';
 const savedApiUrl = localStorage.getItem('apiUrl') || (CORRECT_BACKEND_URL + '/api');
 
 // Fix common API URL issues
@@ -27,6 +27,9 @@ if (baseURL.includes('waitnot-restaurant-app.onrender.com')) {
   baseURL = CORRECT_BACKEND_URL;
   localStorage.setItem('apiUrl', CORRECT_BACKEND_URL + '/api');
 }
+
+console.log('🌐 Environment API URL:', import.meta.env.VITE_API_URL);
+console.log('🔧 Using backend URL:', baseURL);
 
 axios.defaults.baseURL = baseURL;
 axios.defaults.timeout = 30000 // Reduced from 60s to 30s for better UX
