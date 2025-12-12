@@ -16,18 +16,52 @@ const LocationDisplay = ({ location, showDetails = true, className = '' }) => {
     
     setLoading(true);
     try {
-      // Use reverse geocoding to get address
-      const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${location.latitude}+${location.longitude}&key=YOUR_API_KEY&limit=1`
-      );
+      // Try multiple geocoding services
+      let addressFound = false;
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.results && data.results.length > 0) {
-          setAddress(data.results[0].formatted);
+      // First try OpenCage with demo key
+      try {
+        const response = await fetch(
+          `https://api.opencagedata.com/geocode/v1/json?q=${location.latitude}+${location.longitude}&key=demo&limit=1`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.length > 0) {
+            setAddress(data.results[0].formatted);
+            addressFound = true;
+          }
         }
-      } else {
-        // Fallback to a simple format
+      } catch (error) {
+        console.log('OpenCage API failed, trying alternative...');
+      }
+      
+      // Fallback to Nominatim (OpenStreetMap)
+      if (!addressFound) {
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.latitude}&lon=${location.longitude}&zoom=18&addressdetails=1`,
+            {
+              headers: {
+                'User-Agent': 'WaitNot-Restaurant-App'
+              }
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.display_name) {
+              setAddress(data.display_name);
+              addressFound = true;
+            }
+          }
+        } catch (error) {
+          console.log('Nominatim API failed');
+        }
+      }
+      
+      // Final fallback to coordinates
+      if (!addressFound) {
         setAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
       }
     } catch (error) {

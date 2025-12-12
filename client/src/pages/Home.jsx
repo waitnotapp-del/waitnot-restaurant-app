@@ -51,9 +51,31 @@ export default function Home() {
     // Preload restaurants in background for faster access
     restaurantCache.preloadRestaurants(axios);
     
+    // Load saved location data first
+    loadSavedLocation();
+    
     // Try to detect location automatically on page load
     detectLocationAutomatically();
   }, []);
+  
+  const loadSavedLocation = () => {
+    try {
+      const savedLocation = localStorage.getItem('userLocation');
+      if (savedLocation) {
+        const locationData = JSON.parse(savedLocation);
+        console.log('📍 Loaded saved location:', locationData);
+        setUserLocation(locationData);
+        
+        // Show info about loaded location
+        showInfo('Using your saved location', {
+          title: 'Location Loaded',
+          duration: 3000
+        });
+      }
+    } catch (error) {
+      console.error('Error loading saved location:', error);
+    }
+  };
 
   // Auto-hide location status after 5 seconds
   useEffect(() => {
@@ -165,6 +187,8 @@ export default function Home() {
 
   const saveLocationData = async (latitude, longitude, address = null) => {
     try {
+      console.log('🔍 Attempting to save location data:', { latitude, longitude, address });
+      
       // Get user data if available
       const userData = localStorage.getItem('user');
       const userId = userData ? JSON.parse(userData)._id : null;
@@ -176,7 +200,7 @@ export default function Home() {
         localStorage.setItem('sessionId', sessionId);
       }
       
-      await axios.post('/api/locations/save', {
+      console.log('📍 Saving location with data:', {
         latitude,
         longitude,
         address,
@@ -184,10 +208,40 @@ export default function Home() {
         sessionId
       });
       
-      console.log('Location data saved successfully');
+      const response = await axios.post('/api/locations/save', {
+        latitude,
+        longitude,
+        address,
+        userId,
+        sessionId
+      });
+      
+      console.log('✅ Location data saved successfully:', response.data);
+      
+      // Store location in localStorage for quick access
+      const locationData = {
+        latitude,
+        longitude,
+        address,
+        timestamp: new Date().toISOString(),
+        saved: true
+      };
+      localStorage.setItem('userLocation', JSON.stringify(locationData));
+      
+      showSuccess('Location saved successfully!', {
+        title: 'Location Stored',
+        duration: 3000
+      });
+      
     } catch (error) {
-      console.error('Error saving location data:', error);
-      // Don't show error to user as this is background operation
+      console.error('❌ Error saving location data:', error);
+      console.error('Error details:', error.response?.data);
+      
+      // Show error to user since location saving is important
+      showError('Failed to save location data', {
+        title: 'Location Save Error',
+        duration: 5000
+      });
     }
   };
 
@@ -196,18 +250,72 @@ export default function Home() {
     setLocationError(null);
     
     try {
+      console.log('🔍 Getting user location...');
       const location = await getUserLocation();
-      setUserLocation({
+      
+      console.log('📍 Location detected:', location);
+      
+      // Try to get address from coordinates
+      let address = null;
+      try {
+        console.log('🏠 Attempting to get address...');
+        
+        // Try OpenCage first
+        try {
+          const response = await fetch(
+            `https://api.opencagedata.com/geocode/v1/json?q=${location.latitude}+${location.longitude}&key=demo&limit=1`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+              address = data.results[0].formatted;
+              console.log('✅ Address found via OpenCage:', address);
+            }
+          }
+        } catch (error) {
+          console.log('OpenCage failed, trying Nominatim...');
+        }
+        
+        // Fallback to Nominatim if OpenCage fails
+        if (!address) {
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.latitude}&lon=${location.longitude}&zoom=18&addressdetails=1`,
+              {
+                headers: {
+                  'User-Agent': 'WaitNot-Restaurant-App'
+                }
+              }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              if (data.display_name) {
+                address = data.display_name;
+                console.log('✅ Address found via Nominatim:', address);
+              }
+            }
+          } catch (error) {
+            console.log('Nominatim also failed');
+          }
+        }
+      } catch (addressError) {
+        console.log('⚠️ Could not fetch address:', addressError.message);
+      }
+      
+      const locationWithDetails = {
         ...location,
+        address,
         timestamp: new Date().toISOString()
-      });
+      };
+      
+      setUserLocation(locationWithDetails);
       setShowLocationStatus(true); // Show status indicator
       
-      // Save location data to database
-      await saveLocationData(location.latitude, location.longitude);
+      // Save location data to database with address
+      await saveLocationData(location.latitude, location.longitude, address);
       
       // Show success notification
-      showSuccess('Location detected successfully!', {
+      showSuccess('Location detected and saved successfully!', {
         title: 'Location Found'
       });
       
@@ -215,7 +323,7 @@ export default function Home() {
       await fetchNearbyRestaurants(location.latitude, location.longitude);
       
     } catch (error) {
-      console.error('Location error:', error);
+      console.error('❌ Location error:', error);
       const errorMessage = error.message || 'Failed to get location';
       setLocationError(errorMessage);
       
