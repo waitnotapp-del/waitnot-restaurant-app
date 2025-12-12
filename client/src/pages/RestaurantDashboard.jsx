@@ -1977,10 +1977,24 @@ export default function RestaurantDashboard() {
                 console.log('📍 Location data:', locationData);
                 console.log('🌐 Current API base URL:', axios.defaults.baseURL);
                 
-                // Use the new utility with built-in fallback
-                const updatedRestaurant = await updateRestaurantLocation(restaurantId, locationData);
-                console.log('✅ Location save response:', updatedRestaurant);
-                setRestaurant(updatedRestaurant);
+                // Try the new utility first, with direct fallback if it fails
+                try {
+                  const updatedRestaurant = await updateRestaurantLocation(restaurantId, locationData);
+                  console.log('✅ Location save response:', updatedRestaurant);
+                  setRestaurant(updatedRestaurant);
+                } catch (utilityError) {
+                  console.log('⚠️ Utility failed, trying direct API call...', utilityError.message);
+                  
+                  // Direct fallback - try the general restaurant update endpoint
+                  const response = await axios.patch(
+                    `/api/restaurants/${restaurantId}`,
+                    locationData,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                  );
+                  
+                  console.log('✅ Direct API call succeeded');
+                  setRestaurant(response.data);
+                }
                 
                 // Show success message
                 console.log('🎉 Location settings saved successfully!');

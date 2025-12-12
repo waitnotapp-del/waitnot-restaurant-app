@@ -34,41 +34,13 @@ export async function updateRestaurantLocation(restaurantId, locationData) {
 
   console.log('📤 Sending payload:', payload);
 
-  // Try the specific location-settings endpoint first
-  try {
-    console.log('🎯 Trying location-settings endpoint...');
-    const response = await fetch(`/api/restaurants/${restaurantId}/location-settings`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
+  // Skip the location-settings endpoint for now since deployed server doesn't have it
+  // Go directly to the fallback method that should work
+  console.log('🔄 Using general restaurant update endpoint (deployed server compatibility)...');
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Location updated via location-settings endpoint');
-      return data;
-    } else if (response.status === 404) {
-      console.log('⚠️ Location-settings endpoint not found, trying fallback...');
-      // Fall through to fallback method
-    } else {
-      const errorText = await response.text();
-      console.error('❌ Location-settings endpoint error:', errorText);
-      throw new Error(`Failed to update location: ${errorText}`);
-    }
-  } catch (error) {
-    if (error.message.includes('fetch')) {
-      console.log('🌐 Network error with location-settings, trying fallback...');
-      // Fall through to fallback method
-    } else {
-      throw error;
-    }
-  }
-
-  // Fallback: Try the general restaurant update endpoint
+  // Use the general restaurant update endpoint
   try {
-    console.log('🔄 Trying general restaurant update endpoint...');
+    console.log('🔄 Using general restaurant update endpoint...');
     const response = await fetch(`/api/restaurants/${restaurantId}`, {
       method: 'PATCH',
       headers: {
@@ -77,18 +49,36 @@ export async function updateRestaurantLocation(restaurantId, locationData) {
       body: JSON.stringify(payload)
     });
 
+    console.log('📊 Response status:', response.status);
+    console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
+
     if (response.ok) {
       const data = await response.json();
       console.log('✅ Location updated via general update endpoint');
       return data;
     } else {
       const errorText = await response.text();
-      console.error('❌ General update endpoint error:', errorText);
-      throw new Error(`Failed to update location: ${errorText}`);
+      console.error('❌ General update endpoint error:', response.status, errorText);
+      
+      // Provide more specific error messages
+      if (response.status === 404) {
+        throw new Error('Restaurant not found. Please check the restaurant ID.');
+      } else if (response.status === 401) {
+        throw new Error('Authentication failed. Please login again.');
+      } else if (response.status === 400) {
+        throw new Error(`Invalid data: ${errorText}`);
+      } else {
+        throw new Error(`Server error (${response.status}): ${errorText}`);
+      }
     }
   } catch (error) {
-    console.error('❌ All endpoints failed:', error);
-    throw new Error(`Failed to update restaurant location: ${error.message}`);
+    console.error('❌ Restaurant location update failed:', error);
+    
+    if (error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your internet connection.');
+    } else {
+      throw error;
+    }
   }
 }
 
