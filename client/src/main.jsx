@@ -17,19 +17,24 @@ BundleOptimizer.preconnectDomain('https://fonts.googleapis.com');
 BundleOptimizer.preconnectDomain('https://fonts.gstatic.com');
 
 // Configure axios with performance optimizations
-const CORRECT_BACKEND_URL = import.meta.env.VITE_API_URL || 'https://waitnot-backend-42e3.onrender.com';
-const savedApiUrl = localStorage.getItem('apiUrl') || (CORRECT_BACKEND_URL + '/api');
+// CRITICAL: Always use the correct backend URL
+const CORRECT_BACKEND_URL = 'https://waitnot-backend-42e3.onrender.com';
+const WRONG_BACKEND_URL = 'waitnot-restaurant-app.onrender.com';
 
-// Fix common API URL issues
-let baseURL = savedApiUrl.replace('/api', '');
-if (baseURL.includes('waitnot-restaurant-app.onrender.com')) {
-  console.log('🔧 Fixing incorrect API URL...');
-  baseURL = CORRECT_BACKEND_URL;
-  localStorage.setItem('apiUrl', CORRECT_BACKEND_URL + '/api');
+// Clear any cached wrong URLs
+const savedApiUrl = localStorage.getItem('apiUrl');
+if (savedApiUrl && savedApiUrl.includes(WRONG_BACKEND_URL)) {
+  console.log('🔧 Clearing incorrect cached API URL...');
+  localStorage.removeItem('apiUrl');
+  localStorage.removeItem('socketUrl');
 }
+
+// Always use the correct backend URL
+let baseURL = CORRECT_BACKEND_URL;
 
 console.log('🌐 Environment API URL:', import.meta.env.VITE_API_URL);
 console.log('🔧 Using backend URL:', baseURL);
+console.log('✅ Correct backend: waitnot-backend-42e3.onrender.com');
 
 axios.defaults.baseURL = baseURL;
 axios.defaults.timeout = 30000 // Reduced from 60s to 30s for better UX
