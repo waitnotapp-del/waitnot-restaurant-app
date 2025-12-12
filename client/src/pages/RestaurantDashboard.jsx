@@ -11,6 +11,7 @@ import OrderNotifications from '../components/OrderNotifications';
 import QuickStats from '../components/QuickStats';
 import PaymentSettingsTab from '../components/PaymentSettingsTab';
 import RestaurantLocationSettings from '../components/RestaurantLocationSettings';
+import { updateRestaurantLocation, testLocationEndpoints } from '../utils/restaurantLocationAPI';
 
 export default function RestaurantDashboard() {
   const navigate = useNavigate();
@@ -1976,36 +1977,10 @@ export default function RestaurantDashboard() {
                 console.log('📍 Location data:', locationData);
                 console.log('🌐 Current API base URL:', axios.defaults.baseURL);
                 
-                let response;
-                
-                try {
-                  // Try the specific location-settings route first
-                  console.log('🎯 Trying location-settings route...');
-                  response = await axios.patch(
-                    `/api/restaurants/${restaurantId}/location-settings`,
-                    locationData,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                  );
-                  console.log('✅ Location-settings route worked!');
-                } catch (locationError) {
-                  console.log('⚠️ Location-settings route failed:', locationError.response?.status);
-                  
-                  if (locationError.response?.status === 404) {
-                    // Fallback to general restaurant update route
-                    console.log('🔄 Trying fallback route (general restaurant update)...');
-                    response = await axios.patch(
-                      `/api/restaurants/${restaurantId}`,
-                      locationData,
-                      { headers: { Authorization: `Bearer ${token}` } }
-                    );
-                    console.log('✅ Fallback route worked!');
-                  } else {
-                    throw locationError;
-                  }
-                }
-                
-                console.log('✅ Location save response:', response.data);
-                setRestaurant(response.data);
+                // Use the new utility with built-in fallback
+                const updatedRestaurant = await updateRestaurantLocation(restaurantId, locationData);
+                console.log('✅ Location save response:', updatedRestaurant);
+                setRestaurant(updatedRestaurant);
                 
                 // Show success message
                 console.log('🎉 Location settings saved successfully!');

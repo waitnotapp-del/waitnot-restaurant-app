@@ -207,7 +207,64 @@ router.patch('/:id/payment-settings', async (req, res) => {
   }
 });
 
-// Update location settings
+// General restaurant update endpoint (fallback for location settings)
+router.patch('/:id', async (req, res) => {
+  try {
+    console.log('🔍 Restaurant update request:', {
+      restaurantId: req.params.id,
+      body: req.body
+    });
+    
+    const updateData = { ...req.body };
+    
+    // Handle location-specific validation if location data is provided
+    if (updateData.latitude !== undefined || updateData.longitude !== undefined || updateData.deliveryRadiusKm !== undefined) {
+      console.log('📍 Location data detected in update request');
+      
+      // Validate coordinates
+      if (updateData.latitude !== undefined && (isNaN(updateData.latitude) || updateData.latitude < -90 || updateData.latitude > 90)) {
+        console.log('❌ Invalid latitude:', updateData.latitude);
+        return res.status(400).json({ error: 'Invalid latitude. Must be between -90 and 90' });
+      }
+      
+      if (updateData.longitude !== undefined && (isNaN(updateData.longitude) || updateData.longitude < -180 || updateData.longitude > 180)) {
+        console.log('❌ Invalid longitude:', updateData.longitude);
+        return res.status(400).json({ error: 'Invalid longitude. Must be between -180 and 180' });
+      }
+      
+      if (updateData.deliveryRadiusKm !== undefined && (isNaN(updateData.deliveryRadiusKm) || updateData.deliveryRadiusKm < 0)) {
+        console.log('❌ Invalid delivery radius:', updateData.deliveryRadiusKm);
+        return res.status(400).json({ error: 'Invalid delivery radius. Must be a positive number' });
+      }
+      
+      // Convert to numbers
+      if (updateData.latitude !== undefined) updateData.latitude = parseFloat(updateData.latitude);
+      if (updateData.longitude !== undefined) updateData.longitude = parseFloat(updateData.longitude);
+      if (updateData.deliveryRadiusKm !== undefined) updateData.deliveryRadiusKm = parseFloat(updateData.deliveryRadiusKm);
+    }
+    
+    // Remove password from update data for security
+    delete updateData.password;
+    
+    console.log('📝 Updating restaurant with data:', updateData);
+    
+    const restaurant = await restaurantDB.update(req.params.id, updateData);
+    if (!restaurant) {
+      console.log('❌ Restaurant not found:', req.params.id);
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+    
+    console.log('✅ Restaurant updated successfully');
+    
+    const { password, ...rest } = restaurant;
+    res.json(rest);
+  } catch (error) {
+    console.error('❌ Error updating restaurant:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update location settings (specific endpoint)
 router.patch('/:id/location-settings', async (req, res) => {
   try {
     console.log('🔍 Location settings update request:', {
