@@ -33,7 +33,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
  * @param {number} maxDistance - Maximum distance to consider (default: 50km)
  * @returns {Array} Filtered and sorted restaurants
  */
-export function filterNearbyRestaurants(restaurants, userLat, userLon, maxDistance = 50) {
+export function filterNearbyRestaurants(restaurants, userLat, userLon, maxDistance = 200) {
   console.log('🔍 Starting restaurant filtering:', {
     userLocation: { lat: userLat, lon: userLon },
     totalRestaurants: restaurants?.length || 0,
@@ -71,8 +71,8 @@ export function filterNearbyRestaurants(restaurants, userLat, userLon, maxDistan
       restaurant.latitude, restaurant.longitude
     );
 
-    // Get delivery radius (default to 10km if not specified)
-    const deliveryRadius = restaurant.deliveryRadiusKm || restaurant.deliveryRadius || 10;
+    // Get delivery radius (default to 200km if not specified for testing)
+    const deliveryRadius = restaurant.deliveryRadiusKm || restaurant.deliveryRadius || 200;
 
     // Check if within delivery radius
     const withinDeliveryRadius = distance <= deliveryRadius;
