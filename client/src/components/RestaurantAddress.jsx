@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
-import { resolveAddress, getShortAddress } from '../utils/addressResolver';
+import { getReadableAddress, getShortAddress } from '../utils/simpleAddressResolver';
 
 const RestaurantAddress = ({ restaurant, showDistance = true, className = '' }) => {
   const [address, setAddress] = useState('');
@@ -17,7 +17,7 @@ const RestaurantAddress = ({ restaurant, showDistance = true, className = '' }) 
     
     setLoading(true);
     try {
-      const resolvedAddress = await resolveAddress(restaurant.latitude, restaurant.longitude);
+      const resolvedAddress = await getReadableAddress(restaurant.latitude, restaurant.longitude);
       const shortAddress = getShortAddress(resolvedAddress);
       setAddress(shortAddress);
     } catch (error) {

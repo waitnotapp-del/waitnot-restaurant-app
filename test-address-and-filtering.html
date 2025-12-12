@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Address Resolution and Restaurant Filtering</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Address Resolution and Restaurant Filtering</h1>
+    
+    <div class="test-section">
+        <h2>📍 Address Resolution Test</h2>
+        <p>Test converting coordinates to human-readable addresses:</p>
+        <button onclick="testAddressResolution()">Test Address Resolution</button>
+        <div id="address-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🏪 Restaurant Filtering Test</h2>
+        <p>Test filtering restaurants by proximity and delivery radius:</p>
+        <button onclick="testRestaurantFiltering()">Test Restaurant Filtering</button>
+        <div id="filtering-results"></div>
+    </div>
+
+    <script>
+        // Test coordinates (Mangalore area - matches your restaurant data)
+        const testCoordinates = [
+            { lat: 12.845966, lon: 74.954028, name: "Restaurant Location 1" },
+            { lat: 12.846054, lon: 74.95475, name: "Restaurant Location 2" },
+            { lat: 19.076, lon: 72.8777, name: "Mumbai Location" },
+            { lat: 28.6139, lon: 77.2090, name: "Delhi Location" }
+        ];
+
+        // Test user location (near Mangalore restaurants)
+        const testUserLocation = { lat: 12.846000, lon: 74.954000 };
+
+        // Sample restaurant data
+        const testRestaurants = [
+            {
+                _id: 'test1',
+                name: 'Spice Garden',
+                latitude: 12.845966,
+                longitude: 74.954028,
+                deliveryRadiusKm: 5,
+                rating: 4.5
+            },
+            {
+                _id: 'test2',
+                name: 'Pizza Paradise',
+                latitude: 12.846054,
+                longitude: 74.95475,
+                deliveryRadiusKm: 5,
+                rating: 4.3
+            },
+            {
+                _id: 'test3',
+                name: 'Far Restaurant',
+                latitude: 19.076,
+                longitude: 72.8777,
+                deliveryRadiusKm: 10,
+                rating: 4.8
+            },
+            {
+                _id: 'test4',
+                name: 'No Location Restaurant',
+                // No coordinates
+                deliveryRadiusKm: 5,
+                rating: 4.0
+            }
+        ];
+
+        async function testAddressResolution() {
+            const resultsDiv = document.getElementById('address-results');
+            resultsDiv.innerHTML = '<p>🔄 Testing address resolution...</p>';
+
+            for (const coord of testCoordinates) {
+                try {
+                    const address = await getReadableAddress(coord.lat, coord.lon);
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            <strong>${coord.name}:</strong><br>
+                            Coordinates: ${coord.lat}, ${coord.lon}<br>
+                            Address: ${address}
+                        </div>
+                    `;
+                } catch (error) {
+                    resultsDiv.innerHTML += `
+                        <div class="result error">
+                            <strong>${coord.name}:</strong><br>
+                            Error: ${error.message}
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        async function testRestaurantFiltering() {
+            const resultsDiv = document.getElementById('filtering-results');
+            resultsDiv.innerHTML = '<p>🔄 Testing restaurant filtering...</p>';
+
+            try {
+                const filteredRestaurants = filterNearbyRestaurants(
+                    testRestaurants, 
+                    testUserLocation.lat, 
+                    testUserLocation.lon
+                );
+
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        <strong>User Location:</strong> ${testUserLocation.lat}, ${testUserLocation.lon}<br>
+                        <strong>Total Restaurants:</strong> ${testRestaurants.length}<br>
+                        <strong>Nearby Restaurants:</strong> ${filteredRestaurants.length}
+                    </div>
+                `;
+
+                filteredRestaurants.forEach(restaurant => {
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            <strong>${restaurant.name}</strong><br>
+                            Distance: ${restaurant.distanceKm ? restaurant.distanceKm + ' km' : 'N/A'}<br>
+                            Delivery Status: ${restaurant.deliveryStatus}<br>
+                            Delivery Radius: ${restaurant.deliveryRadius || 'N/A'} km
+                        </div>
+                    `;
+                });
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Simple address resolution function (copy from your utility)
+        async function getReadableAddress(lat, lon) {
+            if (!lat || !lon) {
+                return `${lat || 'N/A'}, ${lon || 'N/A'}`;
+            }
+
+            try {
+                // Try BigDataCloud first
+                const response = await fetch(
+                    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+                );
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.city || data.locality) {
+                        const parts = [
+                            data.locality || data.city,
+                            data.principalSubdivision,
+                            data.countryName
+                        ].filter(Boolean);
+                        return parts.join(', ');
+                    }
+                }
+            } catch (error) {
+                console.log('BigDataCloud failed');
+            }
+
+            // Fallback to coordinates
+            return `${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E`;
+        }
+
+        // Simple restaurant filtering function
+        function filterNearbyRestaurants(restaurants, userLat, userLon, maxDistance = 50) {
+            if (!userLat || !userLon || !Array.isArray(restaurants)) {
+                return restaurants || [];
+            }
+
+            const results = [];
+
+            restaurants.forEach(restaurant => {
+                if (!restaurant.latitude || !restaurant.longitude) {
+                    results.push({
+                        ...restaurant,
+                        distanceKm: null,
+                        deliveryStatus: 'no_location_data',
+                        isNearby: true
+                    });
+                    return;
+                }
+
+                const distance = calculateDistance(userLat, userLon, restaurant.latitude, restaurant.longitude);
+                const deliveryRadius = restaurant.deliveryRadiusKm || 10;
+                const withinDeliveryRadius = distance <= deliveryRadius;
+                const withinMaxDistance = distance <= maxDistance;
+
+                if (withinMaxDistance) {
+                    results.push({
+                        ...restaurant,
+                        distanceKm: parseFloat(distance.toFixed(2)),
+                        deliveryStatus: withinDeliveryRadius ? 'delivers' : 'out_of_delivery_range',
+                        isNearby: true,
+                        deliveryRadius: deliveryRadius
+                    });
+                }
+            });
+
+            return results.sort((a, b) => {
+                if (a.deliveryStatus === 'delivers' && b.deliveryStatus !== 'delivers') return -1;
+                if (b.deliveryStatus === 'delivers' && a.deliveryStatus !== 'delivers') return 1;
+                if (a.distanceKm !== null && b.distanceKm !== null) {
+                    return a.distanceKm - b.distanceKm;
+                }
+                return (b.rating || 0) - (a.rating || 0);
+            });
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            
+            const a = 
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+    </script>
+</body>
+</html>

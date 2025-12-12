@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Clock, CheckCircle } from 'lucide-react';
-import { resolveAddress, getShortAddress } from '../utils/addressResolver';
+import { getReadableAddress, getShortAddress } from '../utils/simpleAddressResolver';
 
 const LocationDisplay = ({ location, showDetails = true, className = '' }) => {
   const [address, setAddress] = useState('');
@@ -17,8 +17,8 @@ const LocationDisplay = ({ location, showDetails = true, className = '' }) => {
     
     setLoading(true);
     try {
-      // Use the enhanced address resolver
-      const resolvedAddress = await resolveAddress(location.latitude, location.longitude);
+      // Use the simple address resolver
+      const resolvedAddress = await getReadableAddress(location.latitude, location.longitude);
       setAddress(resolvedAddress);
       console.log('📍 Address resolved for location display:', resolvedAddress);
     } catch (error) {

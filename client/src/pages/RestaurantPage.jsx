@@ -12,7 +12,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import Reviews from '../components/Reviews';
 import { checkRestaurantDelivery } from '../utils/deliveryRadius';
 import { useNotification } from '../context/NotificationContext';
-import { resolveAddress } from '../utils/addressResolver';
+import { getReadableAddress } from '../utils/simpleAddressResolver';
 import RestaurantAddress from '../components/RestaurantAddress';
 
 export default function RestaurantPage() {

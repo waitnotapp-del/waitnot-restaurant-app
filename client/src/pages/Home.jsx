@@ -9,7 +9,8 @@ import { useRestaurantCache } from '../utils/restaurantCache';
 import { useDebounce, useOptimizedAPI, usePerformanceOptimization } from '../utils/performanceOptimizer';
 import { useNotification } from '../context/NotificationContext';
 import { filterRestaurantsByDeliveryRadius, checkRestaurantDelivery } from '../utils/deliveryRadius';
-import { resolveAddress } from '../utils/addressResolver';
+import { getReadableAddress } from '../utils/simpleAddressResolver';
+import { filterNearbyRestaurants, getDeliveringRestaurants } from '../utils/restaurantFilter';
 import OptimizedImage from '../components/OptimizedImage';
 import VirtualizedList from '../components/VirtualizedList';
 import QRScanner from '../components/QRScanner';
@@ -169,8 +170,8 @@ export default function Home() {
         return;
       }
       
-      // Filter by delivery radius
-      const nearbyRestaurants = filterRestaurantsByDeliveryRadius(allRestaurants, latitude, longitude);
+      // Filter by proximity and delivery radius using new utility
+      const nearbyRestaurants = getDeliveringRestaurants(allRestaurants, latitude, longitude);
       
       console.log('📊 Filtering results:', {
         total: allRestaurants.length,
@@ -304,11 +305,11 @@ export default function Home() {
       
       console.log('📍 Location detected:', location);
       
-      // Try to get address from coordinates using enhanced resolver
+      // Try to get address from coordinates using simple resolver
       let address = null;
       try {
         console.log('🏠 Attempting to get address...');
-        address = await resolveAddress(location.latitude, location.longitude);
+        address = await getReadableAddress(location.latitude, location.longitude);
         console.log('✅ Address resolved:', address);
       } catch (addressError) {
         console.log('⚠️ Could not fetch address:', addressError.message);
@@ -692,19 +693,19 @@ const RestaurantCard = ({ restaurant }) => {
           />
           
           {/* Delivery Status Indicator */}
-          {restaurant.deliveryStatus === 'available' && (
+          {restaurant.deliveryStatus === 'delivers' && (
             <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
               <span className="text-xs">✅ Delivers</span>
             </div>
           )}
           
-          {restaurant.deliveryStatus === 'out_of_range' && (
-            <div className="flex items-center gap-1 text-red-600 dark:text-red-400 transition-colors">
-              <span className="text-xs">❌ Out of range</span>
+          {restaurant.deliveryStatus === 'out_of_delivery_range' && (
+            <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 transition-colors">
+              <span className="text-xs">⚠️ Out of range</span>
             </div>
           )}
           
-          {restaurant.deliveryStatus === 'location_not_configured' && restaurant.isDeliveryAvailable && (
+          {restaurant.deliveryStatus === 'no_location_data' && restaurant.isDeliveryAvailable && (
             <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
               <span className="text-xs">🚚 Available</span>
             </div>
