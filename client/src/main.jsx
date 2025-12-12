@@ -44,10 +44,12 @@ axios.defaults.headers.common['Content-Type'] = 'application/json'
 // Enable HTTP/2 and compression
 axios.defaults.headers.common['Accept-Encoding'] = 'gzip, deflate, br'
 
+// FORCE REDEPLOY - Updated timestamp: 2025-12-12
 console.log('=== WaitNot App Starting ===')
-console.log('API Base URL:', axios.defaults.baseURL)
-console.log('Full API URL with /api:', axios.defaults.baseURL + '/api')
+console.log('🎯 CORRECT API Base URL:', axios.defaults.baseURL)
+console.log('🎯 Full API URL with /api:', axios.defaults.baseURL + '/api')
 console.log('Environment:', import.meta.env.MODE)
+console.log('⚠️ If you see waitnot-restaurant-app.onrender.com, clear localStorage and refresh!')
 
 // Optimized axios interceptors with performance monitoring
 axios.interceptors.request.use(
