@@ -1972,25 +1972,59 @@ export default function RestaurantDashboard() {
                   throw new Error('Restaurant ID not found. Please login again.');
                 }
                 
-                console.log('Saving location for restaurant:', restaurantId);
-                console.log('Location data:', locationData);
-                console.log('API URL:', `/api/restaurants/${restaurantId}/location-settings`);
+                console.log('🔍 Saving location for restaurant:', restaurantId);
+                console.log('📍 Location data:', locationData);
+                console.log('🌐 Current API base URL:', axios.defaults.baseURL);
                 
-                const response = await axios.patch(
-                  `/api/restaurants/${restaurantId}/location-settings`,
-                  locationData,
-                  { headers: { Authorization: `Bearer ${token}` } }
-                );
+                let response;
                 
-                console.log('Location save response:', response.data);
+                try {
+                  // Try the specific location-settings route first
+                  console.log('🎯 Trying location-settings route...');
+                  response = await axios.patch(
+                    `/api/restaurants/${restaurantId}/location-settings`,
+                    locationData,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                  );
+                  console.log('✅ Location-settings route worked!');
+                } catch (locationError) {
+                  console.log('⚠️ Location-settings route failed:', locationError.response?.status);
+                  
+                  if (locationError.response?.status === 404) {
+                    // Fallback to general restaurant update route
+                    console.log('🔄 Trying fallback route (general restaurant update)...');
+                    response = await axios.patch(
+                      `/api/restaurants/${restaurantId}`,
+                      locationData,
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    );
+                    console.log('✅ Fallback route worked!');
+                  } else {
+                    throw locationError;
+                  }
+                }
+                
+                console.log('✅ Location save response:', response.data);
                 setRestaurant(response.data);
-                // Location settings saved - success will be shown in the component UI
+                
+                // Show success message
+                console.log('🎉 Location settings saved successfully!');
+                
               } catch (error) {
-                console.error('Error saving location:', error);
+                console.error('❌ Error saving location:', error);
                 console.error('Error details:', error.response?.data);
                 console.error('Status:', error.response?.status);
                 console.error('Restaurant ID from storage:', sessionStorage.getItem('restaurantId') || localStorage.getItem('restaurantId'));
-                throw error;
+                console.error('Current axios baseURL:', axios.defaults.baseURL);
+                
+                // Provide helpful error message
+                if (error.response?.status === 404) {
+                  throw new Error('Location settings endpoint not found. Please check if the backend is updated.');
+                } else if (error.response?.status === 401) {
+                  throw new Error('Authentication failed. Please login again.');
+                } else {
+                  throw new Error(error.response?.data?.error || error.message || 'Failed to save location settings');
+                }
               }
             }}
           />
