@@ -4,21 +4,22 @@
 
 ### Backend API (Render)
 ```
-https://waitnot-backend.onrender.com
+https://waitnot-backend-42e3.onrender.com
 ```
 
 **API Endpoints:**
-- Restaurants: `https://waitnot-backend.onrender.com/api/restaurants`
-- Orders: `https://waitnot-backend.onrender.com/api/orders`
-- Users: `https://waitnot-backend.onrender.com/api/users`
-- Auth: `https://waitnot-backend.onrender.com/api/auth`
-- Payment: `https://waitnot-backend.onrender.com/api/payment`
-- Reels: `https://waitnot-backend.onrender.com/api/reels`
-- Reviews: `https://waitnot-backend.onrender.com/api/reviews`
+- Restaurants: `https://waitnot-backend-42e3.onrender.com/api/restaurants`
+- Orders: `https://waitnot-backend-42e3.onrender.com/api/orders`
+- Users: `https://waitnot-backend-42e3.onrender.com/api/users`
+- Auth: `https://waitnot-backend-42e3.onrender.com/api/auth`
+- Payment: `https://waitnot-backend-42e3.onrender.com/api/payment`
+- Reels: `https://waitnot-backend-42e3.onrender.com/api/reels`
+- Reviews: `https://waitnot-backend-42e3.onrender.com/api/reviews`
+- Locations: `https://waitnot-backend-42e3.onrender.com/api/locations`
 
 ### Frontend App (Vercel)
 ```
-https://waitnot-restaurant-app.vercel.app
+https://waitnot-restaurant-app-jet.vercel.app
 ```
 
 ---
@@ -34,7 +35,7 @@ https://waitnot-restaurant-app.vercel.app
 - ✅ **MSG91_AUTH_KEY** = (configured)
 
 ### Frontend (Vercel)
-- ✅ **REACT_APP_API_URL** = `https://waitnot-backend.onrender.com`
+- ✅ **VITE_API_URL** = `https://waitnot-backend-42e3.onrender.com`
 
 ---
 
@@ -43,7 +44,7 @@ https://waitnot-restaurant-app.vercel.app
 ### Current APK Backend URL
 The mobile app is configured to use:
 ```
-https://waitnot-backend.onrender.com/api
+https://waitnot-backend-42e3.onrender.com/api
 ```
 
 This is set in `client/src/config.js`
@@ -55,7 +56,7 @@ This is set in `client/src/config.js`
 ### 1. Test Backend API
 Open in browser:
 ```
-https://waitnot-backend.onrender.com/api/restaurants
+https://waitnot-backend-42e3.onrender.com/api/restaurants
 ```
 
 Should return JSON with restaurant data ✅
@@ -63,7 +64,7 @@ Should return JSON with restaurant data ✅
 ### 2. Test Frontend
 Open in browser:
 ```
-https://waitnot-restaurant-app.vercel.app
+https://waitnot-restaurant-app-jet.vercel.app
 ```
 
 Should load the app ✅
@@ -98,14 +99,14 @@ Should load the app ✅
 1. Sign up: https://uptimerobot.com (Free)
 2. Add New Monitor:
    - Type: HTTP(s)
-   - URL: `https://waitnot-backend.onrender.com/api/restaurants`
+   - URL: `https://waitnot-backend-42e3.onrender.com/api/restaurants`
    - Interval: 5 minutes
 3. Service will stay awake 24/7 ✅
 
 ### Option 2: Cron-Job.org
 1. Sign up: https://cron-job.org (Free)
 2. Create Cronjob:
-   - URL: `https://waitnot-backend.onrender.com/api/restaurants`
+   - URL: `https://waitnot-backend-42e3.onrender.com/api/restaurants`
    - Interval: Every 10 minutes
 3. Enable job ✅
 
@@ -121,7 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Backend
-        run: curl https://waitnot-backend.onrender.com/api/restaurants
+        run: curl https://waitnot-backend-42e3.onrender.com/api/restaurants
 ```
 
 ---
@@ -220,8 +221,8 @@ jobs:
 - **Backend Dashboard:** https://dashboard.render.com
 - **Frontend Dashboard:** https://vercel.com/dashboard
 - **GitHub Repo:** https://github.com/MuhammedAman113114/waitnot-restaurant-app
-- **Backend API:** https://waitnot-backend.onrender.com
-- **Frontend App:** https://waitnot-restaurant-app.vercel.app
+- **Backend API:** https://waitnot-backend-42e3.onrender.com
+- **Frontend App:** https://waitnot-restaurant-app-jet.vercel.app
 
 ---
 

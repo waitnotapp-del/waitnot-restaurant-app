@@ -2,8 +2,8 @@
 // Can be overridden in Settings page (stored in localStorage)
 
 // Production Backend URL (Render)
-const PRODUCTION_API_URL = 'https://waitnot-backend.onrender.com/api';
-const PRODUCTION_SOCKET_URL = 'https://waitnot-backend.onrender.com';
+const PRODUCTION_API_URL = 'https://waitnot-backend-42e3.onrender.com/api';
+const PRODUCTION_SOCKET_URL = 'https://waitnot-backend-42e3.onrender.com';
 
 // Local Development URLs
 const LOCAL_API_URL = 'http://localhost:5000/api';
@@ -14,7 +14,8 @@ export const API_URL = localStorage.getItem('apiUrl') || PRODUCTION_API_URL;
 export const SOCKET_URL = localStorage.getItem('socketUrl') || PRODUCTION_SOCKET_URL;
 
 // IMPORTANT: 
-// - Production backend: https://waitnot-backend.onrender.com
+// - Production backend: https://waitnot-backend-42e3.onrender.com
+// - Production frontend: https://waitnot-restaurant-app-jet.vercel.app
 // - For local development, change URLs in Settings page
 // - Or set localStorage: localStorage.setItem('apiUrl', 'http://localhost:5000/api')
 

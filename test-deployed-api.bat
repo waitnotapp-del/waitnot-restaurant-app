@@ -3,7 +3,7 @@ echo ========================================
 echo 🧪 Testing Deployed API Endpoints
 echo ========================================
 
-set BACKEND_URL=https://waitnot-restaurant-app.onrender.com
+set BACKEND_URL=https://waitnot-backend-42e3.onrender.com
 
 echo.
 echo 🔍 Testing Backend Health...
