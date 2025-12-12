@@ -7,7 +7,7 @@ console.log('🔧 Fixing API URL Configuration...');
 console.log('Current localStorage apiUrl:', localStorage.getItem('apiUrl'));
 console.log('Current axios baseURL:', axios.defaults.baseURL);
 
-// Correct API URLs - Updated with actual deployment URLs
+// FINAL CORRECT API URLs - DO NOT CHANGE
 const CORRECT_API_URL = 'https://waitnot-backend-42e3.onrender.com/api';
 const CORRECT_BASE_URL = 'https://waitnot-backend-42e3.onrender.com';
 
