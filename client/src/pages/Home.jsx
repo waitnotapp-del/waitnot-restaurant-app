@@ -8,6 +8,7 @@ import { getUserLocation } from '../utils/geolocation';
 import { useRestaurantCache } from '../utils/restaurantCache';
 import { useDebounce, useOptimizedAPI, usePerformanceOptimization } from '../utils/performanceOptimizer';
 import { useNotification } from '../context/NotificationContext';
+import { filterRestaurantsByDeliveryRadius, checkRestaurantDelivery } from '../utils/deliveryRadius';
 import OptimizedImage from '../components/OptimizedImage';
 import VirtualizedList from '../components/VirtualizedList';
 import QRScanner from '../components/QRScanner';
@@ -142,14 +143,40 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching nearby restaurants...');
+      console.log('Fetching nearby restaurants with delivery radius filtering...');
       
-      const response = await restaurantCache.fetchNearbyRestaurants(axios, latitude, longitude);
+      // First get all restaurants
+      const allRestaurants = await restaurantCache.fetchRestaurants(axios);
       
-      setRestaurants(response.nearbyRestaurants);
-      setNearbyCount(response.nearbyRestaurants.length);
+      // Filter by delivery radius
+      const nearbyRestaurants = filterRestaurantsByDeliveryRadius(allRestaurants, latitude, longitude);
+      
+      setRestaurants(nearbyRestaurants);
+      setNearbyCount(nearbyRestaurants.length);
       setIsLocationBased(true);
-      console.log('Nearby restaurants fetched:', response.nearbyRestaurants.length);
+      
+      console.log('Nearby restaurants with delivery radius filtering:', {
+        total: allRestaurants.length,
+        withinDeliveryRadius: nearbyRestaurants.length,
+        filtered: allRestaurants.length - nearbyRestaurants.length
+      });
+      
+      // Show notification about delivery filtering
+      if (nearbyRestaurants.length > 0) {
+        showSuccess(`Found ${nearbyRestaurants.length} restaurant${nearbyRestaurants.length !== 1 ? 's' : ''} that deliver to your location`, {
+          title: 'Delivery Available',
+          duration: 4000
+        });
+      } else {
+        showInfo('No restaurants found in your delivery area. Showing all restaurants instead.', {
+          title: 'No Delivery Available',
+          duration: 6000
+        });
+        // Fallback to all restaurants if none deliver to user's location
+        setRestaurants(allRestaurants);
+        setNearbyCount(0);
+        setIsLocationBased(false);
+      }
     } catch (error) {
       console.error('Error fetching nearby restaurants:', error);
       // Fallback to all restaurants if nearby fetch fails
@@ -671,15 +698,27 @@ const RestaurantCard = ({ restaurant }) => {
             </span>
           </div>
           
-          {restaurant.distanceKm ? (
+          {restaurant.distanceKm !== null && restaurant.distanceKm !== undefined ? (
             <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 transition-colors">
               <MapPin size={14} className="sm:w-4 sm:h-4" />
               <span className="whitespace-nowrap">{restaurant.distanceKm} km</span>
             </div>
+          ) : restaurant.deliveryStatus === 'location_not_configured' ? (
+            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 transition-colors">
+              <MapPin size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline text-xs">Delivery</span>
+            </div>
           ) : restaurant.isDeliveryAvailable && (
             <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
               <MapPin size={14} className="sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Delivery</span>
+              <span className="hidden sm:inline text-xs">Available</span>
+            </div>
+          )}
+          
+          {/* Delivery radius indicator for location-based results */}
+          {isLocationBased && restaurant.deliveryRadius && (
+            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <span>📍 {restaurant.deliveryRadius}km radius</span>
             </div>
           )}
         </div>

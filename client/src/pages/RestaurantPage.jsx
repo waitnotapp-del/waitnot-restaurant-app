@@ -10,6 +10,8 @@ import { formatCurrency, convertNumerals } from '../utils/numberFormatter';
 import { useRestaurantCache } from '../utils/restaurantCache';
 import { App as CapacitorApp } from '@capacitor/app';
 import Reviews from '../components/Reviews';
+import { checkRestaurantDelivery } from '../utils/deliveryRadius';
+import { useNotification } from '../context/NotificationContext';
 
 export default function RestaurantPage() {
   const { t, i18n } = useTranslation();
@@ -21,21 +23,26 @@ export default function RestaurantPage() {
   const [itemRatings, setItemRatings] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deliveryStatus, setDeliveryStatus] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
   const { addToCart, cart, updateQuantity } = useCart();
   const { translatedContent: translatedRestaurant, isTranslating } = useRestaurantTranslation(restaurant);
+  const { showInfo, showWarning, showError } = useNotification();
   
   // Performance optimization
   const restaurantCache = useRestaurantCache();
 
   useEffect(() => {
     fetchRestaurant();
+    loadUserLocation();
   }, [id]);
 
   useEffect(() => {
     if (restaurant) {
       fetchAllRatings();
+      checkDeliveryAvailability();
     }
-  }, [restaurant]);
+  }, [restaurant, userLocation]);
 
   // Handle Android back button
   useEffect(() => {
@@ -61,6 +68,60 @@ export default function RestaurantPage() {
       setError('Failed to load restaurant details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserLocation = () => {
+    try {
+      const savedLocation = localStorage.getItem('userLocation');
+      if (savedLocation) {
+        const locationData = JSON.parse(savedLocation);
+        setUserLocation(locationData);
+        console.log('📍 Loaded user location for delivery check:', locationData);
+      }
+    } catch (error) {
+      console.error('Error loading user location:', error);
+    }
+  };
+
+  const checkDeliveryAvailability = async () => {
+    if (!restaurant || !userLocation?.latitude || !userLocation?.longitude) {
+      return;
+    }
+
+    try {
+      console.log('🚚 Checking delivery availability for restaurant:', restaurant.name);
+      
+      const result = await checkRestaurantDelivery(
+        restaurant._id,
+        userLocation.latitude,
+        userLocation.longitude
+      );
+      
+      setDeliveryStatus(result);
+      
+      console.log('🚚 Delivery check result:', result);
+      
+      // Show notification based on delivery status
+      if (result.allowed === false && result.distance) {
+        showWarning(
+          `This restaurant is ${result.distance}km away, outside their ${result.deliveryRadiusKm}km delivery radius.`,
+          {
+            title: 'Delivery Not Available',
+            duration: 8000
+          }
+        );
+      } else if (result.allowed === true && result.distance) {
+        showInfo(
+          `Great! This restaurant delivers to your location (${result.distance}km away).`,
+          {
+            title: 'Delivery Available',
+            duration: 5000
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error checking delivery availability:', error);
     }
   };
 
@@ -144,6 +205,23 @@ export default function RestaurantPage() {
     return item ? item.quantity : 0;
   };
 
+  const handleAddToCart = (item, restaurant) => {
+    // Check if delivery is available
+    if (deliveryStatus && !deliveryStatus.allowed && userLocation) {
+      showWarning(
+        `This restaurant doesn't deliver to your location (${deliveryStatus.distance}km away, outside ${deliveryStatus.deliveryRadiusKm}km radius).`,
+        {
+          title: 'Delivery Not Available',
+          duration: 6000
+        }
+      );
+      return;
+    }
+
+    // If no location or delivery is allowed, proceed with adding to cart
+    addToCart(item, restaurant);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-16">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
@@ -199,6 +277,23 @@ export default function RestaurantPage() {
                   <span>{t('deliveryAvailable')}</span>
                 </div>
               )}
+              
+              {/* Delivery Status Based on User Location */}
+              {deliveryStatus && userLocation && (
+                <div className={`flex items-center gap-1 transition-colors ${
+                  deliveryStatus.allowed 
+                    ? 'text-green-600 dark:text-green-400' 
+                    : 'text-red-600 dark:text-red-400'
+                }`}>
+                  <MapPin size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  <span className="text-xs sm:text-sm">
+                    {deliveryStatus.allowed 
+                      ? `Delivers to you (${deliveryStatus.distance}km)`
+                      : `Out of range (${deliveryStatus.distance}km)`
+                    }
+                  </span>
+                </div>
+              )}
             </div>
             
             <div className="mt-3 sm:mt-4 text-sm sm:text-base">
@@ -208,6 +303,49 @@ export default function RestaurantPage() {
           </div>
         </div>
       </div>
+
+      {/* Delivery Status Banner */}
+      {deliveryStatus && userLocation && !deliveryStatus.allowed && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 transition-colors">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <MapPin className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
+                Delivery Not Available
+              </h3>
+              <p className="text-sm text-red-700 dark:text-red-400">
+                This restaurant is <strong>{deliveryStatus.distance}km</strong> away from your location, 
+                which is outside their <strong>{deliveryStatus.deliveryRadiusKm}km</strong> delivery radius.
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-500 mt-2">
+                You can still browse the menu, but delivery won't be available to your current location.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deliveryStatus && userLocation && deliveryStatus.allowed && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6 transition-colors">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <MapPin className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-green-800 dark:text-green-300 mb-1">
+                Delivery Available ✅
+              </h3>
+              <p className="text-sm text-green-700 dark:text-green-400">
+                Great! This restaurant delivers to your location. 
+                Distance: <strong>{deliveryStatus.distance}km</strong> 
+                (within {deliveryStatus.deliveryRadiusKm}km delivery radius)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Category Filter */}
       <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 hide-scrollbar">
@@ -293,10 +431,15 @@ export default function RestaurantPage() {
                 <div className="flex flex-col items-end gap-2 p-3 sm:p-4">
                   {quantity === 0 ? (
                     <button
-                      onClick={() => addToCart(item, restaurant)}
-                      className="bg-primary text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-red-600 transition-colors font-semibold text-sm sm:text-base whitespace-nowrap shadow-md"
+                      onClick={() => handleAddToCart(item, restaurant)}
+                      className={`px-4 sm:px-6 py-2 rounded-lg transition-colors font-semibold text-sm sm:text-base whitespace-nowrap shadow-md ${
+                        deliveryStatus && !deliveryStatus.allowed
+                          ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                          : 'bg-primary text-white hover:bg-red-600'
+                      }`}
+                      disabled={deliveryStatus && !deliveryStatus.allowed}
                     >
-                      {t('add')}
+                      {deliveryStatus && !deliveryStatus.allowed ? 'No Delivery' : t('add')}
                     </button>
                   ) : (
                     <div className="flex items-center gap-2 sm:gap-3 bg-primary text-white rounded-lg px-2 sm:px-3 py-2 shadow-md">
@@ -308,7 +451,7 @@ export default function RestaurantPage() {
                       </button>
                       <span className="font-bold min-w-[20px] text-center">{quantity}</span>
                       <button
-                        onClick={() => addToCart(item, restaurant)}
+                        onClick={() => handleAddToCart(item, restaurant)}
                         className="p-1 hover:bg-red-600 rounded transition-colors"
                       >
                         <Plus size={18} />
