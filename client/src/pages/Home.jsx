@@ -9,12 +9,14 @@ import { useRestaurantCache } from '../utils/restaurantCache';
 import { useDebounce, useOptimizedAPI, usePerformanceOptimization } from '../utils/performanceOptimizer';
 import { useNotification } from '../context/NotificationContext';
 import { filterRestaurantsByDeliveryRadius, checkRestaurantDelivery } from '../utils/deliveryRadius';
+import { resolveAddress } from '../utils/addressResolver';
 import OptimizedImage from '../components/OptimizedImage';
 import VirtualizedList from '../components/VirtualizedList';
 import QRScanner from '../components/QRScanner';
 import Chatbot from '../components/Chatbot';
 import AIAssistant from '../components/AIAssistant';
 import LocationDisplay from '../components/LocationDisplay';
+import RestaurantAddress from '../components/RestaurantAddress';
 
 export default function Home() {
   const { t, i18n } = useTranslation();
@@ -143,23 +145,43 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching nearby restaurants with delivery radius filtering...');
+      console.log('🔍 Fetching nearby restaurants with delivery radius filtering...', {
+        userLocation: { latitude, longitude }
+      });
       
       // First get all restaurants
       const allRestaurants = await restaurantCache.fetchRestaurants(axios);
+      console.log('📊 Total restaurants loaded:', allRestaurants.length);
+      
+      // Debug: Check if restaurants have location data
+      const restaurantsWithLocation = allRestaurants.filter(r => r.latitude && r.longitude);
+      console.log('📍 Restaurants with location data:', restaurantsWithLocation.length);
+      
+      if (restaurantsWithLocation.length === 0) {
+        console.log('⚠️ No restaurants have location data configured');
+        showInfo('Restaurants don\'t have location data configured. Showing all restaurants.', {
+          title: 'Location Data Missing',
+          duration: 5000
+        });
+        setRestaurants(allRestaurants);
+        setNearbyCount(0);
+        setIsLocationBased(false);
+        return;
+      }
       
       // Filter by delivery radius
       const nearbyRestaurants = filterRestaurantsByDeliveryRadius(allRestaurants, latitude, longitude);
       
-      setRestaurants(nearbyRestaurants);
-      setNearbyCount(nearbyRestaurants.length);
-      setIsLocationBased(true);
-      
-      console.log('Nearby restaurants with delivery radius filtering:', {
+      console.log('📊 Filtering results:', {
         total: allRestaurants.length,
+        withLocation: restaurantsWithLocation.length,
         withinDeliveryRadius: nearbyRestaurants.length,
         filtered: allRestaurants.length - nearbyRestaurants.length
       });
+      
+      setRestaurants(nearbyRestaurants);
+      setNearbyCount(nearbyRestaurants.length);
+      setIsLocationBased(true);
       
       // Show notification about delivery filtering
       if (nearbyRestaurants.length > 0) {
@@ -178,7 +200,7 @@ export default function Home() {
         setIsLocationBased(false);
       }
     } catch (error) {
-      console.error('Error fetching nearby restaurants:', error);
+      console.error('❌ Error fetching nearby restaurants:', error);
       // Fallback to all restaurants if nearby fetch fails
       fetchRestaurants();
     } finally {
@@ -282,51 +304,15 @@ export default function Home() {
       
       console.log('📍 Location detected:', location);
       
-      // Try to get address from coordinates
+      // Try to get address from coordinates using enhanced resolver
       let address = null;
       try {
         console.log('🏠 Attempting to get address...');
-        
-        // Try OpenCage first
-        try {
-          const response = await fetch(
-            `https://api.opencagedata.com/geocode/v1/json?q=${location.latitude}+${location.longitude}&key=demo&limit=1`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-              address = data.results[0].formatted;
-              console.log('✅ Address found via OpenCage:', address);
-            }
-          }
-        } catch (error) {
-          console.log('OpenCage failed, trying Nominatim...');
-        }
-        
-        // Fallback to Nominatim if OpenCage fails
-        if (!address) {
-          try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.latitude}&lon=${location.longitude}&zoom=18&addressdetails=1`,
-              {
-                headers: {
-                  'User-Agent': 'WaitNot-Restaurant-App'
-                }
-              }
-            );
-            if (response.ok) {
-              const data = await response.json();
-              if (data.display_name) {
-                address = data.display_name;
-                console.log('✅ Address found via Nominatim:', address);
-              }
-            }
-          } catch (error) {
-            console.log('Nominatim also failed');
-          }
-        }
+        address = await resolveAddress(location.latitude, location.longitude);
+        console.log('✅ Address resolved:', address);
       } catch (addressError) {
         console.log('⚠️ Could not fetch address:', addressError.message);
+        address = `${location.latitude.toFixed(4)}°N, ${location.longitude.toFixed(4)}°E`;
       }
       
       const locationWithDetails = {
@@ -698,27 +684,29 @@ const RestaurantCard = ({ restaurant }) => {
             </span>
           </div>
           
-          {restaurant.distanceKm !== null && restaurant.distanceKm !== undefined ? (
-            <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 transition-colors">
-              <MapPin size={14} className="sm:w-4 sm:h-4" />
-              <span className="whitespace-nowrap">{restaurant.distanceKm} km</span>
-            </div>
-          ) : restaurant.deliveryStatus === 'location_not_configured' ? (
-            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 transition-colors">
-              <MapPin size={14} className="sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline text-xs">Delivery</span>
-            </div>
-          ) : restaurant.isDeliveryAvailable && (
+          {/* Restaurant Address with Distance */}
+          <RestaurantAddress 
+            restaurant={restaurant} 
+            showDistance={isLocationBased}
+            className="flex-1"
+          />
+          
+          {/* Delivery Status Indicator */}
+          {restaurant.deliveryStatus === 'available' && (
             <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
-              <MapPin size={14} className="sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline text-xs">Available</span>
+              <span className="text-xs">✅ Delivers</span>
             </div>
           )}
           
-          {/* Delivery radius indicator for location-based results */}
-          {isLocationBased && restaurant.deliveryRadius && (
-            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-              <span>📍 {restaurant.deliveryRadius}km radius</span>
+          {restaurant.deliveryStatus === 'out_of_range' && (
+            <div className="flex items-center gap-1 text-red-600 dark:text-red-400 transition-colors">
+              <span className="text-xs">❌ Out of range</span>
+            </div>
+          )}
+          
+          {restaurant.deliveryStatus === 'location_not_configured' && restaurant.isDeliveryAvailable && (
+            <div className="flex items-center gap-1 text-green-600 dark:text-green-400 transition-colors">
+              <span className="text-xs">🚚 Available</span>
             </div>
           )}
         </div>

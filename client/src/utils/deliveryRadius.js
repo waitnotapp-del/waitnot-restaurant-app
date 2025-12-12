@@ -60,13 +60,20 @@ export function checkDeliveryRadius(userLat, userLon, restLat, restLon, delivery
  */
 export function filterRestaurantsByDeliveryRadius(restaurants, userLat, userLon) {
   if (!userLat || !userLon || !Array.isArray(restaurants)) {
-    return restaurants;
+    console.log('❌ Invalid parameters for filtering:', { userLat, userLon, restaurantsCount: restaurants?.length });
+    return restaurants || [];
   }
   
-  return restaurants
+  console.log('🔍 Filtering restaurants by delivery radius:', {
+    userLocation: { lat: userLat, lon: userLon },
+    totalRestaurants: restaurants.length
+  });
+  
+  const processedRestaurants = restaurants
     .map(restaurant => {
-      // Skip restaurants without location data
+      // Check if restaurant has location data
       if (!restaurant.latitude || !restaurant.longitude) {
+        console.log(`⚠️ Restaurant "${restaurant.name}" missing location data`);
         return {
           ...restaurant,
           distanceKm: null,
@@ -78,6 +85,13 @@ export function filterRestaurantsByDeliveryRadius(restaurants, userLat, userLon)
       const deliveryRadius = restaurant.deliveryRadiusKm || restaurant.deliveryRadius || 10; // Default 10km
       const result = checkDeliveryRadius(userLat, userLon, restaurant.latitude, restaurant.longitude, deliveryRadius);
       
+      console.log(`📍 Restaurant "${restaurant.name}":`, {
+        location: { lat: restaurant.latitude, lon: restaurant.longitude },
+        distance: result.distance,
+        deliveryRadius: deliveryRadius,
+        withinRadius: result.isWithinRadius
+      });
+      
       return {
         ...restaurant,
         distanceKm: result.distance,
@@ -85,21 +99,34 @@ export function filterRestaurantsByDeliveryRadius(restaurants, userLat, userLon)
         deliveryRadius: result.deliveryRadius,
         deliveryStatus: result.isWithinRadius ? 'available' : 'out_of_range'
       };
-    })
-    .filter(restaurant => restaurant.isWithinDeliveryRadius) // Only show restaurants within delivery range
-    .sort((a, b) => {
-      // Sort by distance (closest first), then by rating
-      if (a.distanceKm === null && b.distanceKm === null) return 0;
-      if (a.distanceKm === null) return 1;
-      if (b.distanceKm === null) return -1;
-      
-      if (a.distanceKm !== b.distanceKm) {
-        return a.distanceKm - b.distanceKm;
-      }
-      
-      // If distances are similar (within 0.5km), sort by rating
-      return (b.rating || 0) - (a.rating || 0);
     });
+
+  // Separate restaurants within and outside delivery radius
+  const withinRadius = processedRestaurants.filter(restaurant => restaurant.isWithinDeliveryRadius);
+  const outsideRadius = processedRestaurants.filter(restaurant => !restaurant.isWithinDeliveryRadius);
+  
+  console.log('📊 Filtering results:', {
+    withinRadius: withinRadius.length,
+    outsideRadius: outsideRadius.length,
+    total: processedRestaurants.length
+  });
+  
+  // Sort restaurants within radius by distance, then by rating
+  const sortedWithinRadius = withinRadius.sort((a, b) => {
+    // Sort by distance (closest first), then by rating
+    if (a.distanceKm === null && b.distanceKm === null) return 0;
+    if (a.distanceKm === null) return 1;
+    if (b.distanceKm === null) return -1;
+    
+    if (Math.abs(a.distanceKm - b.distanceKm) > 0.5) {
+      return a.distanceKm - b.distanceKm;
+    }
+    
+    // If distances are similar (within 0.5km), sort by rating
+    return (b.rating || 0) - (a.rating || 0);
+  });
+  
+  return sortedWithinRadius;
 }
 
 /**

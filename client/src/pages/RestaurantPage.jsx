@@ -12,6 +12,8 @@ import { App as CapacitorApp } from '@capacitor/app';
 import Reviews from '../components/Reviews';
 import { checkRestaurantDelivery } from '../utils/deliveryRadius';
 import { useNotification } from '../context/NotificationContext';
+import { resolveAddress } from '../utils/addressResolver';
+import RestaurantAddress from '../components/RestaurantAddress';
 
 export default function RestaurantPage() {
   const { t, i18n } = useTranslation();
@@ -296,9 +298,21 @@ export default function RestaurantPage() {
               )}
             </div>
             
-            <div className="mt-3 sm:mt-4 text-sm sm:text-base">
-              <span className="text-gray-700 dark:text-gray-300 font-semibold transition-colors">{t('Cuisines')}: </span>
-              <span className="text-gray-600 dark:text-gray-400 transition-colors">{displayRestaurant.cuisine?.join(', ')}</span>
+            <div className="mt-3 sm:mt-4 space-y-2 text-sm sm:text-base">
+              <div>
+                <span className="text-gray-700 dark:text-gray-300 font-semibold transition-colors">{t('Cuisines')}: </span>
+                <span className="text-gray-600 dark:text-gray-400 transition-colors">{displayRestaurant.cuisine?.join(', ')}</span>
+              </div>
+              
+              {/* Restaurant Address */}
+              <div>
+                <span className="text-gray-700 dark:text-gray-300 font-semibold transition-colors">Location: </span>
+                <RestaurantAddress 
+                  restaurant={displayRestaurant} 
+                  showDistance={false}
+                  className="inline-flex"
+                />
+              </div>
             </div>
           </div>
         </div>
