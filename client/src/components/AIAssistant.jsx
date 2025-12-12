@@ -810,10 +810,10 @@ export default function AIAssistant() {
       }
     }
     
-    return getSimpleAIResponse(message, lowerMessage);
+    return await getSimpleAIResponse(message, lowerMessage);
   };
 
-  const getSimpleAIResponse = (message, lowerMessage) => {
+  const getSimpleAIResponse = async (message, lowerMessage) => {
     // Simple test response to check if AI is working
     if (lowerMessage.includes('test') || lowerMessage.includes('hello')) {
       return "✅ AI Assistant is working! I can help you with:\n\n🍽️ Finding restaurants\n📋 Viewing menus\n🛒 Placing orders\n🎤 Voice commands\n\nWhat would you like to do?";
